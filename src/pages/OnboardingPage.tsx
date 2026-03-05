@@ -357,10 +357,10 @@ export default function OnboardingPage() {
                 {step === 1 ? <Store className="w-10 h-10 text-slate-950" /> : <Users className="w-10 h-10 text-slate-950" />}
               </div>
               <h1 className="text-3xl font-black text-white mb-3 tracking-wide">
-                {step === 1 ? 'إعداد الصالون الملكي' : 'طاقم العمل المميز'}
+                {step === 1 ? 'إعداد صالونك' : 'فريق الحلاقين'}
               </h1>
               <p className="text-slate-400 font-medium">
-                {step === 1 ? 'أدخل معلومات صالونك لتبدأ رحلة النجاح' : 'أضف الحلاقين لتقديم أفضل خدمة لعملائك'}
+                {step === 1 ? 'أدخل معلومات صالونك للبدء' : 'أضف الحلاقين العاملين في صالونك'}
               </p>
             </div>
 
