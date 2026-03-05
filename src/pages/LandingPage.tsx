@@ -4,8 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Scissors, Clock, Users, Shield, ChevronLeft, Smartphone, Navigation, CheckCircle } from 'lucide-react';
+import { Scissors, Clock, Users, Shield, ChevronLeft, Smartphone, Navigation, CheckCircle, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 function useCountUp(end: number, duration: number, start: boolean) {
@@ -22,6 +21,143 @@ function useCountUp(end: number, duration: number, start: boolean) {
     requestAnimationFrame(step);
   }, [end, duration, start]);
   return count;
+}
+
+/* ════════════════════════════════════════════
+   AUTH MODAL — defined outside LandingPage so
+   React never unmounts it on state change
+════════════════════════════════════════════ */
+interface AuthModalProps {
+  isLoginOpen: boolean;
+  isSignUpOpen: boolean;
+  email: string;
+  password: string;
+  loading: boolean;
+  setEmail: (v: string) => void;
+  setPassword: (v: string) => void;
+  setIsLoginOpen: (v: boolean) => void;
+  setIsSignUpOpen: (v: boolean) => void;
+  onLogin: (e: React.FormEvent) => void;
+  onSignUp: (e: React.FormEvent) => void;
+}
+
+function AuthModal({
+  isLoginOpen, isSignUpOpen, email, password, loading,
+  setEmail, setPassword, setIsLoginOpen, setIsSignUpOpen,
+  onLogin, onSignUp,
+}: AuthModalProps) {
+  const isOpen = isLoginOpen || isSignUpOpen;
+  if (!isOpen) return null;
+
+  const isLogin = isLoginOpen;
+  const closeAll = () => { setIsLoginOpen(false); setIsSignUpOpen(false); };
+  const switchToSignUp = () => { setIsLoginOpen(false); setTimeout(() => setIsSignUpOpen(true), 150); };
+  const switchToLogin = () => { setIsSignUpOpen(false); setTimeout(() => setIsLoginOpen(true), 150); };
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) closeAll(); }}
+      style={{ animation: 'fadeIn 0.15s ease' }}
+    >
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+
+      <div
+        className="relative w-full max-w-md bg-zinc-900 border border-zinc-700/60 rounded-2xl shadow-2xl overflow-hidden"
+        style={{ animation: 'scaleIn 0.2s cubic-bezier(0.34,1.56,0.64,1)' }}
+      >
+        <div className="h-1 w-full bg-yellow-400" />
+
+        <div className="flex items-start justify-between px-7 pt-6 pb-2">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 bg-yellow-400 rounded-lg flex items-center justify-center">
+                <Scissors className="w-4 h-4 text-black" />
+              </div>
+              <span className="font-black text-white text-base">Barber<span className="text-yellow-400">Queue</span></span>
+            </div>
+            <h2 className="text-2xl font-black text-white mt-3">
+              {isLogin ? 'مرحباً بعودتك ✂️' : 'دشن صالونك الآن'}
+            </h2>
+            <p className="text-zinc-500 text-sm mt-1">
+              {isLogin ? 'سجل الدخول لإدارة صالونك' : 'حساب مجاني — بدون بطاقة بنكية'}
+            </p>
+          </div>
+          <button
+            onClick={closeAll}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all mt-1 shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Tab switcher */}
+        <div className="flex gap-1 mx-7 mt-5 p-1 bg-zinc-950 rounded-xl border border-zinc-800">
+          <button type="button" onClick={switchToLogin}
+            className={`flex-1 h-9 rounded-lg text-sm font-black transition-all ${isLogin ? 'bg-yellow-400 text-black' : 'text-zinc-500 hover:text-zinc-300'
+              }`}>
+            تسجيل الدخول
+          </button>
+          <button type="button" onClick={switchToSignUp}
+            className={`flex-1 h-9 rounded-lg text-sm font-black transition-all ${!isLogin ? 'bg-yellow-400 text-black' : 'text-zinc-500 hover:text-zinc-300'
+              }`}>
+            حساب جديد
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={isLogin ? onLogin : onSignUp} className="px-7 py-6 space-y-4">
+          <div className="space-y-2">
+            <Label className="text-zinc-300 text-sm font-bold">البريد الإلكتروني</Label>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@barbershop.com"
+              className="rounded-xl h-12 bg-zinc-950 border-zinc-700 focus-visible:ring-yellow-400 text-white placeholder:text-zinc-600"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-zinc-300 text-sm font-bold">كلمة المرور</Label>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="rounded-xl h-12 bg-zinc-950 border-zinc-700 focus-visible:ring-yellow-400 text-white"
+              required
+            />
+          </div>
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-yellow-400 hover:bg-yellow-300 text-black font-black text-base transition-all hover:scale-[1.02] active:scale-[0.98] shadow-[0_4px_16px_rgba(250,204,21,0.35)] mt-2 h-12"
+          >
+            {loading
+              ? <Loader2 className="w-5 h-5 animate-spin" />
+              : isLogin ? 'دخول ←' : 'ابدأ مجاناً →'
+            }
+          </Button>
+        </form>
+
+        <div className="px-7 pb-6 text-center">
+          <p className="text-zinc-600 text-xs">
+            {isLogin ? 'ليس لديك حساب؟ ' : 'لديك حساب؟ '}
+            <button type="button" onClick={isLogin ? switchToSignUp : switchToLogin}
+              className="text-yellow-400 font-bold hover:text-yellow-300 transition-colors">
+              {isLogin ? 'سجل الآن' : 'سجل الدخول'}
+            </button>
+          </p>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.92) } to { opacity: 1; transform: scale(1) } }
+      `}</style>
+    </div>
+  );
 }
 
 export default function LandingPage() {
@@ -130,68 +266,22 @@ export default function LandingPage() {
     },
   ];
 
-  const LoginForm = ({ hideSheet }: { hideSheet?: boolean }) => (
-    <form onSubmit={handleLogin} className="space-y-5 p-4">
-      <div className="space-y-2">
-        <Label className="text-zinc-300">البريد الإلكتروني</Label>
-        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@barbershop.com"
-          className="rounded-xl h-14 bg-zinc-950 border-zinc-700 focus-visible:ring-yellow-400 text-white placeholder:text-zinc-600" required />
-      </div>
-      <div className="space-y-2">
-        <Label className="text-zinc-300">كلمة المرور</Label>
-        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-          placeholder="••••••••"
-          className="rounded-xl h-14 bg-zinc-950 border-zinc-700 focus-visible:ring-yellow-400 text-white" required />
-      </div>
-      <Button type="submit"
-        className="w-full rounded-xl h-14 bg-yellow-400 hover:bg-yellow-300 text-black font-black text-lg transition-all"
-        disabled={loading}>
-        {loading ? 'جاري التحقق...' : 'دخول'}
-      </Button>
-      {!hideSheet && (
-        <div className="text-center pt-2">
-          <button type="button" onClick={() => { setIsLoginOpen(false); setTimeout(() => setIsSignUpOpen(true), 300); }}
-            className="text-zinc-500 hover:text-yellow-400 text-sm transition-colors">
-            ليس لديك حساب؟ <span className="text-yellow-400 font-bold">سجل الآن</span>
-          </button>
-        </div>
-      )}
-    </form>
-  );
-
-  const SignUpForm = ({ hideSheet }: { hideSheet?: boolean }) => (
-    <form onSubmit={handleSignUp} className="space-y-5 p-4">
-      <div className="space-y-2">
-        <Label className="text-zinc-300">البريد الإلكتروني</Label>
-        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@barbershop.com"
-          className="rounded-xl h-14 bg-zinc-950 border-zinc-700 focus-visible:ring-yellow-400 text-white placeholder:text-zinc-600" required />
-      </div>
-      <div className="space-y-2">
-        <Label className="text-zinc-300">كلمة المرور</Label>
-        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-          placeholder="••••••••"
-          className="rounded-xl h-14 bg-zinc-950 border-zinc-700 focus-visible:ring-yellow-400 text-white" required />
-      </div>
-      <Button type="submit"
-        className="w-full rounded-xl h-14 bg-yellow-400 hover:bg-yellow-300 text-black font-black text-lg transition-all"
-        disabled={loading}>
-        {loading ? 'جاري التجهيز...' : 'ابدأ مجاناً'}
-      </Button>
-      {!hideSheet && (
-        <div className="text-center pt-2">
-          <button type="button" onClick={() => { setIsSignUpOpen(false); setTimeout(() => setIsLoginOpen(true), 300); }}
-            className="text-zinc-500 hover:text-yellow-400 text-sm transition-colors">
-            لديك حساب؟ <span className="text-yellow-400 font-bold">سجل الدخول</span>
-          </button>
-        </div>
-      )}
-    </form>
-  );
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-yellow-400/30 font-sans">
+      <AuthModal
+        isLoginOpen={isLoginOpen}
+        isSignUpOpen={isSignUpOpen}
+        email={email}
+        password={password}
+        loading={loading}
+        setEmail={setEmail}
+        setPassword={setPassword}
+        setIsLoginOpen={setIsLoginOpen}
+        setIsSignUpOpen={setIsSignUpOpen}
+        onLogin={handleLogin}
+        onSignUp={handleSignUp}
+      />
 
       {/* ─── HEADER ─── */}
       <header className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-xl border-b border-white/5">
@@ -210,29 +300,16 @@ export default function LandingPage() {
             </Button>
           ) : (
             <div className="flex gap-2">
-              <Sheet open={isLoginOpen} onOpenChange={setIsLoginOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" className="rounded-xl text-zinc-300 hover:text-white hover:bg-white/5">تسجيل الدخول</Button>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="rounded-t-[2rem] bg-zinc-900 border-zinc-700 h-auto max-h-[90vh]">
-                  <SheetHeader className="pb-4 pt-2">
-                    <SheetTitle className="text-center text-2xl font-black text-white">مرحباً بعودتك ✂️</SheetTitle>
-                  </SheetHeader>
-                  <LoginForm />
-                </SheetContent>
-              </Sheet>
-
-              <Sheet open={isSignUpOpen} onOpenChange={setIsSignUpOpen}>
-                <SheetTrigger asChild>
-                  <Button className="rounded-xl bg-yellow-400 hover:bg-yellow-300 text-black font-black border-none hidden sm:flex">إنشاء حساب</Button>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="rounded-t-[2rem] bg-zinc-900 border-zinc-700 h-auto max-h-[90vh]">
-                  <SheetHeader className="pb-4 pt-2">
-                    <SheetTitle className="text-center text-2xl font-black text-white">دشن صالونك الآن ✂️</SheetTitle>
-                  </SheetHeader>
-                  <SignUpForm />
-                </SheetContent>
-              </Sheet>
+              <Button variant="ghost"
+                onClick={() => { setIsSignUpOpen(false); setIsLoginOpen(true); }}
+                className="rounded-xl text-zinc-300 hover:text-white hover:bg-white/5">
+                تسجيل الدخول
+              </Button>
+              <Button
+                onClick={() => { setIsLoginOpen(false); setIsSignUpOpen(true); }}
+                className="rounded-xl bg-yellow-400 hover:bg-yellow-300 text-black font-black border-none hidden sm:flex">
+                إنشاء حساب
+              </Button>
             </div>
           )}
         </div>
@@ -283,20 +360,12 @@ export default function LandingPage() {
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
-              <Sheet open={isSignUpOpen} onOpenChange={setIsSignUpOpen}>
-                <SheetTrigger asChild>
-                  <Button size="lg" className="rounded-xl h-14 px-8 bg-yellow-400 hover:bg-yellow-300 text-black font-black text-lg transition-all hover:scale-105">
-                    ابدأ مجاناً الآن
-                    <ChevronLeft className="w-5 h-5 mr-1" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="rounded-t-[2rem] bg-zinc-900 border-zinc-700 h-auto max-h-[90vh]">
-                  <SheetHeader className="pb-4 pt-2">
-                    <SheetTitle className="text-center text-2xl font-black text-white">دشن صالونك الآن ✂️</SheetTitle>
-                  </SheetHeader>
-                  <SignUpForm />
-                </SheetContent>
-              </Sheet>
+              <Button size="lg"
+                onClick={() => { setIsLoginOpen(false); setIsSignUpOpen(true); }}
+                className="rounded-xl h-14 px-8 bg-yellow-400 hover:bg-yellow-300 text-black font-black text-lg transition-all hover:scale-105">
+                ابدأ مجاناً الآن
+                <ChevronLeft className="w-5 h-5 mr-1" />
+              </Button>
 
               <Button variant="outline" size="lg"
                 className="rounded-xl h-14 px-8 text-lg border-zinc-600 text-zinc-200 bg-white/5 hover:bg-white/10 hover:border-zinc-400 transition-all"
@@ -390,21 +459,12 @@ export default function LandingPage() {
             سجل الآن مجاناً ودشن نظامك في دقيقتين. بدون بطاقة بنكية، بدون تعقيد.
           </p>
 
-          <Sheet open={isSignUpOpen} onOpenChange={setIsSignUpOpen}>
-            <SheetTrigger asChild>
-              <Button size="lg"
-                className="rounded-xl h-16 px-12 text-xl bg-black text-yellow-400 font-black hover:bg-zinc-900 transition-all hover:scale-105 border-2 border-black">
-                ابدأ الآن — مجاناً 100%
-                <ChevronLeft className="w-5 h-5 mr-2" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="rounded-t-[2rem] bg-zinc-900 border-zinc-700 h-auto max-h-[90vh]">
-              <SheetHeader className="pb-4 pt-2">
-                <SheetTitle className="text-center text-2xl font-black text-white">دشن صالونك الآن ✂️</SheetTitle>
-              </SheetHeader>
-              <SignUpForm hideSheet />
-            </SheetContent>
-          </Sheet>
+          <Button size="lg"
+            onClick={() => { setIsLoginOpen(false); setIsSignUpOpen(true); }}
+            className="rounded-xl h-16 px-12 text-xl bg-black text-yellow-400 font-black hover:bg-zinc-900 transition-all hover:scale-105 border-2 border-black">
+            ابدأ الآن — مجاناً 100%
+            <ChevronLeft className="w-5 h-5 mr-2" />
+          </Button>
         </div>
       </section>
 
