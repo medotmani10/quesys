@@ -14,8 +14,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['pwa-icon.svg'],
       manifest: {
-        name: 'كوافير',
-        short_name: 'كوافير',
+        name: 'Barber Ticket',
+        short_name: 'Barber Ticket',
         description: 'نظام إدارة صالونات الحلاقة الذكي',
         theme_color: '#09090b',
         background_color: '#09090b',
