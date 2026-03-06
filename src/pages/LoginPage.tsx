@@ -48,9 +48,19 @@ export default function LoginPage() {
                 if (user) checkShopExists(user.id);
             }
         } else {
-            const { error } = await supabase.auth.signUp({ email, password });
-            if (error) toast.error(error.message);
-            else toast.success('تم إنشاء الحساب بنجاح');
+            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
+            if (signUpError) {
+                toast.error(signUpError.message);
+            } else if (signUpData.user) {
+                // Auto sign-in after sign-up (email confirmation disabled in Supabase)
+                const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+                if (signInError) {
+                    toast.error('تم إنشاء الحساب. ' + signInError.message);
+                } else if (signInData.user) {
+                    toast.success('تم إنشاء الحساب وتسجيل الدخول بنجاح');
+                    checkShopExists(signInData.user.id);
+                }
+            }
         }
         setLoading(false);
     };
