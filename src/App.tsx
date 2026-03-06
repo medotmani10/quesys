@@ -8,6 +8,7 @@ import AdminDashboard from '@/pages/AdminDashboard';
 import ArchivePage from '@/pages/ArchivePage';
 import AdminSettingsPage from '@/pages/AdminSettingsPage';
 import TicketStatusPage from '@/pages/TicketStatusPage';
+import TVDisplayPage from '@/pages/TVDisplayPage';
 
 // Detect if the app is running as an installed PWA (standalone mode)
 const isPWA = window.matchMedia('(display-mode: standalone)').matches
@@ -36,6 +37,9 @@ function App() {
           {/* Customer booking page:
               - In PWA → go to admin (customers use browser link, not the installed app)
               - In browser → show the customer booking page */}
+          {/* TV display page — must be BEFORE the /:slug catch-all */}
+          <Route path="/:slug/tv" element={<TVDisplayPage />} />
+
           <Route
             path="/:slug"
             element={isPWA ? <Navigate to="/admin" replace /> : <CustomerBookingPage />}
