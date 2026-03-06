@@ -1,169 +1,207 @@
 /**
- * TVDisplayPage.tsx
+ * TVDisplayPage.tsx  — v2 (per-barber columns, premium redesign)
  *
- * Dedicated, passive, read-only Smart TV display for the barbershop queue.
  * Route: /:slug/tv
  *
- * - Dark mode, RTL, Arabic text, landscape-optimised 16:9 layout
- * - Shows currently-serving ticket (large, right panel) and next 3-4 waiting (left panel)
- * - Full-screen start overlay to satisfy browser autoplay policy before audio/realtime
- * - Supabase Realtime subscription with exponential-backoff auto-reconnect
- * - Plays audio ding + CSS pulse on every new serving ticket
+ * ● Full-screen dark + geometric background, shop logo in header
+ * ● One column per active barber — each shows their current + waiting tickets
+ * ● Supabase Realtime with exponential-backoff auto-reconnect
+ * ● Audio ding + amber glow pulse on every new serving ticket
+ * ● Start overlay satisfies browser autoplay policy
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { playTicketSound } from '@/lib/notificationSound';
-import type { Ticket, Shop } from '@/types/database';
+import type { Ticket, Shop, Barber } from '@/types/database';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
-// ─────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────
-const MAX_WAITING_DISPLAY = 4;
-const RECONNECT_DELAYS_MS = [500, 2000, 8000]; // exponential back-off steps
+// ── Constants ─────────────────────────────────────────────────────────────────
+const MAX_WAITING_PER_BARBER = 4;
+const RECONNECT_DELAYS_MS = [500, 2000, 8000];
 
-// ─────────────────────────────────────────────
-// Component
-// ─────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface ShopData extends Pick<Shop, 'id' | 'name'> {
+    logo_url: string | null;
+}
+
+interface BarberQueue {
+    barber: Barber;
+    serving: Ticket | null;
+    waiting: Ticket[];
+    pulsing: boolean;
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function TVDisplayPage() {
     const { slug } = useParams<{ slug: string }>();
 
-    // Gate: user must click "بدء العرض" first (autoplay policy)
     const [started, setStarted] = useState(false);
-
-    // Data
-    const [shop, setShop] = useState<Pick<Shop, 'id' | 'name'> | null>(null);
-    const [servingTicket, setServingTicket] = useState<Ticket | null>(null);
-    const [waitingTickets, setWaitingTickets] = useState<Ticket[]>([]);
-
-    // UI states
-    const [pulsing, setPulsing] = useState(false);
+    const [shop, setShop] = useState<ShopData | null>(null);
+    const [queues, setQueues] = useState<BarberQueue[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [reconnecting, setReconnecting] = useState(false);
 
-    // Internal refs (do not cause re-renders)
     const channelRef = useRef<RealtimeChannel | null>(null);
     const reconnectAttemptRef = useRef(0);
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const prevServingIdRef = useRef<string | null>(null);
+    // Track per-barber serving ticket ids to detect changes
+    const prevServingMapRef = useRef<Map<string, string>>(new Map());
 
-    // ── Fetch current queue snapshot ──────────────────────────────────────────
-    const fetchQueue = useCallback(async (shopId: string) => {
-        const { data, error: fetchErr } = await supabase
-            .from('tickets')
-            .select('*')
-            .eq('shop_id', shopId)
-            .in('status', ['serving', 'waiting'])
-            .order('ticket_number', { ascending: true });
+    // ── Build per-barber queue from a flat ticket list ─────────────────────────
+    const buildQueues = useCallback(
+        (barbers: Barber[], tickets: Ticket[], isLive: boolean) => {
+            setQueues((prev) =>
+                barbers.map((barber) => {
+                    const barberTickets = tickets
+                        .filter((t) => t.barber_id === barber.id)
+                        .sort((a, b) => a.ticket_number - b.ticket_number);
 
-        if (fetchErr) {
-            console.error('[TV] fetchQueue error:', fetchErr);
-            return;
-        }
+                    const serving = barberTickets.find((t) => t.status === 'serving') ?? null;
+                    const waiting = barberTickets
+                        .filter((t) => t.status === 'waiting')
+                        .slice(0, MAX_WAITING_PER_BARBER);
 
-        const tickets = (data ?? []) as Ticket[];
-        const serving = tickets.find((t) => t.status === 'serving') ?? null;
-        const waiting = tickets
-            .filter((t) => t.status === 'waiting')
-            .slice(0, MAX_WAITING_DISPLAY);
+                    // Detect new serving ticket → ding + pulse
+                    const prevId = prevServingMapRef.current.get(barber.id) ?? null;
+                    let pulsing = false;
+                    if (serving && serving.id !== prevId) {
+                        prevServingMapRef.current.set(barber.id, serving.id);
+                        if (isLive) {
+                            playTicketSound();
+                            pulsing = true;
+                        }
+                    }
 
-        // Trigger ding + pulse only when the serving ticket actually changes
-        if (serving && serving.id !== prevServingIdRef.current) {
-            prevServingIdRef.current = serving.id;
-            // Only play sound if the display is already started (avoid playing on first load)
-            if (started) {
-                playTicketSound();
-                setPulsing(true);
-                setTimeout(() => setPulsing(false), 900); // match animation duration
+                    // If pulsing, clear it after animation
+                    if (pulsing) {
+                        setTimeout(
+                            () =>
+                                setQueues((q) =>
+                                    q.map((bq) =>
+                                        bq.barber.id === barber.id ? { ...bq, pulsing: false } : bq
+                                    )
+                                ),
+                            900
+                        );
+                    }
+
+                    // Keep existing pulsing state if barber already has one running
+                    const existing = prev.find((bq) => bq.barber.id === barber.id);
+                    return {
+                        barber,
+                        serving,
+                        waiting,
+                        pulsing: pulsing || (existing?.pulsing ?? false),
+                    };
+                })
+            );
+        },
+        []
+    );
+
+    // ── Fetch snapshot ────────────────────────────────────────────────────────
+    const fetchQueue = useCallback(
+        async (shopId: string, barbers: Barber[], isLive = true) => {
+            const { data, error: err } = await supabase
+                .from('tickets')
+                .select('*')
+                .eq('shop_id', shopId)
+                .in('status', ['serving', 'waiting'])
+                .order('ticket_number', { ascending: true });
+
+            if (err) { console.error('[TV] fetchQueue:', err); return; }
+            buildQueues(barbers, (data ?? []) as Ticket[], isLive);
+        },
+        [buildQueues]
+    );
+
+    // ── Realtime subscription ─────────────────────────────────────────────────
+    const subscribe = useCallback(
+        (shopId: string, barbers: Barber[]) => {
+            if (channelRef.current) {
+                supabase.removeChannel(channelRef.current);
+                channelRef.current = null;
             }
-        }
 
-        setServingTicket(serving);
-        setWaitingTickets(waiting);
-    }, [started]);
-
-    // ── Subscribe to Realtime ─────────────────────────────────────────────────
-    const subscribe = useCallback((shopId: string) => {
-        // Clean up any existing channel first
-        if (channelRef.current) {
-            supabase.removeChannel(channelRef.current);
-            channelRef.current = null;
-        }
-
-        const channel = supabase
-            .channel(`tv-queue-${shopId}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'tickets',
+            const channel = supabase
+                .channel(`tv-queue-v2-${shopId}`)
+                .on('postgres_changes', {
+                    event: '*', schema: 'public', table: 'tickets',
                     filter: `shop_id=eq.${shopId}`,
-                },
-                () => {
-                    // Re-fetch the full snapshot on any change to keep state consistent
-                    fetchQueue(shopId);
-                }
-            )
-            .subscribe((status) => {
-                if (status === 'SUBSCRIBED') {
-                    setReconnecting(false);
-                    reconnectAttemptRef.current = 0;
-                }
+                }, () => fetchQueue(shopId, barbers, true))
+                .subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        setReconnecting(false);
+                        reconnectAttemptRef.current = 0;
+                    }
+                    if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                        const attempt = reconnectAttemptRef.current;
+                        const delay = RECONNECT_DELAYS_MS[Math.min(attempt, RECONNECT_DELAYS_MS.length - 1)];
+                        reconnectAttemptRef.current += 1;
+                        setReconnecting(true);
+                        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+                        reconnectTimerRef.current = setTimeout(() => {
+                            subscribe(shopId, barbers);
+                            fetchQueue(shopId, barbers, true);
+                        }, delay);
+                    }
+                });
 
-                if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-                    const attempt = reconnectAttemptRef.current;
-                    const delay = RECONNECT_DELAYS_MS[Math.min(attempt, RECONNECT_DELAYS_MS.length - 1)];
-                    reconnectAttemptRef.current += 1;
-                    setReconnecting(true);
+            channelRef.current = channel;
+        },
+        [fetchQueue]
+    );
 
-                    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-                    reconnectTimerRef.current = setTimeout(() => {
-                        console.warn(`[TV] Reconnecting (attempt ${attempt + 1})…`);
-                        subscribe(shopId);
-                        fetchQueue(shopId);
-                    }, delay);
-                }
-            });
-
-        channelRef.current = channel;
-    }, [fetchQueue]);
-
-    // ── Boot: resolve slug → shopId ───────────────────────────────────────────
+    // ── Boot after overlay ────────────────────────────────────────────────────
     useEffect(() => {
         if (!started || !slug) return;
-
         let cancelled = false;
 
         async function boot() {
-            const { data, error: shopErr } = await supabase
+            // 1. Fetch shop
+            const { data: shopData, error: shopErr } = await supabase
                 .from('shops')
-                .select('id, name')
+                .select('id, name, logo_url')
                 .eq('slug', slug)
                 .single();
 
             if (cancelled) return;
-
-            if (shopErr || !data) {
+            if (shopErr || !shopData) {
                 setError(`لم يتم العثور على الصالون: "${slug}"`);
                 return;
             }
+            setShop(shopData as ShopData);
 
-            setShop(data as Pick<Shop, 'id' | 'name'>);
-            await fetchQueue(data.id);
-            subscribe(data.id);
+            // 2. Fetch active barbers
+            const { data: barberData, error: barberErr } = await supabase
+                .from('barbers')
+                .select('*')
+                .eq('shop_id', shopData.id)
+                .eq('is_active', true)
+                .order('name', { ascending: true });
+
+            if (cancelled) return;
+            if (barberErr || !barberData?.length) {
+                setError('لا يوجد حلاقون نشطون في هذا الصالون');
+                return;
+            }
+
+            const barbers = barberData as Barber[];
+
+            // 3. Initial snapshot (isLive=false → no ding on first load)
+            await fetchQueue(shopData.id, barbers, false);
+
+            // 4. Subscribe
+            subscribe(shopData.id, barbers);
         }
 
         boot();
-
-        return () => {
-            cancelled = true;
-        };
+        return () => { cancelled = true; };
     }, [started, slug, fetchQueue, subscribe]);
 
-    // ── Cleanup on unmount ────────────────────────────────────────────────────
+    // ── Cleanup ───────────────────────────────────────────────────────────────
     useEffect(() => {
         return () => {
             if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
@@ -171,58 +209,44 @@ export default function TVDisplayPage() {
         };
     }, []);
 
-    // ── Handle start overlay click ────────────────────────────────────────────
-    function handleStart() {
-        setStarted(true);
-    }
-
-    // ─────────────────────────────────────────────
-    // Render: Start Overlay
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Render: START OVERLAY
+    // ─────────────────────────────────────────────────────────────────────────
     if (!started) {
         return (
-            <div
-                dir="rtl"
-                className="fixed inset-0 bg-zinc-950 flex flex-col items-center justify-center gap-8 z-50"
-            >
-                {/* Logo / title */}
-                <div className="text-center space-y-3">
-                    <div className="text-6xl">✂️</div>
-                    <h1 className="text-3xl font-black text-white tracking-wide">نظام الطابور</h1>
-                    <p className="text-zinc-500 text-lg">شاشة العرض التلفزيونية</p>
+            <div dir="rtl" className="tv-bg fixed inset-0 flex flex-col items-center justify-center gap-10 z-50">
+                {/* Geometric overlay */}
+                <div className="tv-grid-overlay" />
+
+                <div className="relative z-10 flex flex-col items-center gap-8">
+                    <div className="flex flex-col items-center gap-3">
+                        <div className="w-24 h-24 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-5xl shadow-[0_0_60px_rgba(245,158,11,0.3)]">
+                            ✂️
+                        </div>
+                        <h1 className="text-4xl font-black text-white tracking-wider">نظام الطابور الذكي</h1>
+                        <p className="text-zinc-500 text-xl">شاشة العرض التلفزيونية</p>
+                    </div>
+
+                    <button
+                        onClick={() => setStarted(true)}
+                        className="group relative overflow-hidden bg-amber-500 hover:bg-amber-400 active:scale-95 text-zinc-950 font-black text-4xl px-20 py-8 rounded-3xl shadow-[0_0_80px_-10px_rgba(245,158,11,0.7)] transition-all duration-200"
+                    >
+                        <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                        بدء العرض
+                    </button>
+
+                    <p className="text-zinc-600 text-base">اضغط لتفعيل الصوت والاتصال المباشر بالطابور</p>
                 </div>
-
-                {/* Start button */}
-                <button
-                    onClick={handleStart}
-                    className="
-            group relative overflow-hidden
-            bg-amber-500 hover:bg-amber-400 active:scale-95
-            text-zinc-950 font-black text-4xl md:text-5xl
-            px-16 py-8 rounded-3xl
-            shadow-[0_0_60px_-10px_rgba(245,158,11,0.7)]
-            transition-all duration-200
-          "
-                >
-                    {/* Shine effect */}
-                    <span className="absolute inset-0 bg-white/20 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700 skew-x-12" />
-                    بدء العرض
-                </button>
-
-                <p className="text-zinc-600 text-base">اضغط لتفعيل الصوت والاتصال المباشر</p>
             </div>
         );
     }
 
-    // ─────────────────────────────────────────────
-    // Render: Error State
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Render: ERROR
+    // ─────────────────────────────────────────────────────────────────────────
     if (error) {
         return (
-            <div
-                dir="rtl"
-                className="fixed inset-0 bg-zinc-950 flex flex-col items-center justify-center gap-4 text-white"
-            >
+            <div dir="rtl" className="tv-bg fixed inset-0 flex flex-col items-center justify-center gap-4 text-white">
                 <div className="text-6xl">⚠️</div>
                 <p className="text-2xl font-bold text-red-400">{error}</p>
                 <p className="text-zinc-500">تحقق من رابط الشاشة وأعد المحاولة</p>
@@ -230,180 +254,234 @@ export default function TVDisplayPage() {
         );
     }
 
-    // ─────────────────────────────────────────────
-    // Render: TV Display (Landscape, RTL, Dark)
-    // ─────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Render: MAIN TV DISPLAY
+    // ─────────────────────────────────────────────────────────────────────────
     return (
-        <div
-            dir="rtl"
-            className="fixed inset-0 bg-zinc-950 text-white overflow-hidden flex flex-col"
-        >
-            {/* ── Top bar ──────────────────────────────── */}
-            <header className="flex items-center justify-between px-8 py-4 border-b border-zinc-800/60 shrink-0">
-                {/* Shop name (right, because RTL) */}
-                <div className="flex items-center gap-3">
-                    <span className="text-2xl">✂️</span>
-                    <span className="text-xl font-bold text-zinc-200">
-                        {shop?.name ?? '…'}
-                    </span>
+        <div dir="rtl" className="tv-bg fixed inset-0 text-white overflow-hidden flex flex-col">
+            {/* Geometric grid overlay */}
+            <div className="tv-grid-overlay pointer-events-none" />
+
+            {/* ── HEADER ─────────────────────────────────────────────────────────── */}
+            <header className="relative z-10 flex items-center justify-between px-8 py-4 shrink-0 border-b border-white/5">
+                {/* RIGHT: Logo + Shop name */}
+                <div className="flex items-center gap-4">
+                    {shop?.logo_url ? (
+                        <div className="relative">
+                            <div className="absolute inset-0 rounded-full bg-amber-400/20 blur-xl" />
+                            <img
+                                src={shop.logo_url}
+                                alt={shop.name}
+                                className="relative w-14 h-14 rounded-full object-cover border-2 border-amber-500/50 shadow-[0_0_24px_rgba(245,158,11,0.4)]"
+                            />
+                        </div>
+                    ) : (
+                        <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-3xl">
+                            ✂️
+                        </div>
+                    )}
+                    <div>
+                        <p className="text-xs text-zinc-500 font-medium tracking-widest uppercase">صالون</p>
+                        <h1 className="text-2xl font-black text-white leading-tight">{shop?.name ?? '…'}</h1>
+                    </div>
                 </div>
 
-                {/* Live indicator + reconnect badge (left, because RTL) */}
-                <div className="flex items-center gap-4">
-                    {reconnecting && (
-                        <span className="text-amber-400 text-sm font-medium animate-pulse">
-                            ⚠ إعادة الاتصال…
+                {/* CENTER: Decorative divider line */}
+                <div className="flex-1 mx-8 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
+
+                {/* LEFT: Status + Clock */}
+                <div className="flex items-center gap-5">
+                    {reconnecting ? (
+                        <span className="flex items-center gap-2 text-amber-400 text-sm font-medium animate-pulse">
+                            <span className="w-2 h-2 rounded-full bg-amber-400" />
+                            إعادة الاتصال…
                         </span>
-                    )}
-                    {!reconnecting && (
+                    ) : (
                         <span className="flex items-center gap-2 text-emerald-400 text-sm font-medium">
                             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-dot" />
-                            مباشر
+                            بث مباشر
                         </span>
                     )}
-                    {/* Clock */}
+                    <div className="w-px h-5 bg-zinc-700" />
                     <LiveClock />
                 </div>
             </header>
 
-            {/* ── Main content: right (serving) / left (waiting) ────────────────── */}
-            <main className="flex flex-1 min-h-0">
+            {/* ── BARBER COLUMNS ─────────────────────────────────────────────────── */}
+            <main className="relative z-10 flex flex-1 min-h-0 gap-0">
+                {queues.map((bq, idx) => (
+                    <BarberColumn
+                        key={bq.barber.id}
+                        bq={bq}
+                        isLast={idx === queues.length - 1}
+                        totalBarbers={queues.length}
+                    />
+                ))}
 
-                {/* Right panel — Currently Serving (60%) */}
-                <section className="flex flex-col items-center justify-center w-[62%] border-l border-zinc-800/60 gap-4 px-6">
-                    <p className="text-zinc-500 text-2xl font-semibold tracking-widest uppercase">
-                        الرقم الحالي
-                    </p>
-
-                    {servingTicket ? (
-                        <>
-                            {/* Ticket number — huge, with optional pulse */}
-                            <div
-                                className={`
-                  font-black leading-none select-none
-                  text-amber-400
-                  ${pulsing ? 'animate-tv-pulse' : ''}
-                `}
-                                style={{ fontSize: 'clamp(8rem, 22vw, 22rem)' }}
-                            >
-                                {servingTicket.ticket_number}
-                            </div>
-                            {/* Subtle sub-label */}
-                            {servingTicket.customer_name && (
-                                <p className="text-zinc-500 text-2xl font-medium mt-2 tracking-wide">
-                                    {servingTicket.customer_name}
-                                </p>
-                            )}
-                        </>
-                    ) : (
+                {/* Empty state while loading */}
+                {queues.length === 0 && (
+                    <div className="flex-1 flex items-center justify-center">
                         <div className="flex flex-col items-center gap-4 opacity-30">
-                            <div
-                                className="font-black leading-none select-none text-zinc-600"
-                                style={{ fontSize: 'clamp(8rem, 22vw, 22rem)' }}
-                            >
-                                —
-                            </div>
-                            <p className="text-zinc-600 text-xl">لا يوجد عميل حالياً</p>
+                            <div className="text-5xl animate-pulse">✂️</div>
+                            <p className="text-zinc-500 text-xl">جاري تحميل البيانات…</p>
                         </div>
-                    )}
-                </section>
-
-                {/* Left panel — Waiting List (38%) */}
-                <section className="flex flex-col w-[38%] px-6 py-6 gap-4">
-                    <p className="text-zinc-500 text-xl font-semibold tracking-widest text-center mb-2">
-                        في الانتظار
-                    </p>
-
-                    {waitingTickets.length === 0 ? (
-                        <div className="flex-1 flex items-center justify-center">
-                            <p className="text-zinc-700 text-xl text-center">لا يوجد انتظار</p>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-3 flex-1">
-                            {waitingTickets.map((ticket, index) => (
-                                <WaitingCard
-                                    key={ticket.id}
-                                    ticket={ticket}
-                                    rank={index + 1}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </section>
+                    </div>
+                )}
             </main>
 
-            {/* ── Footer bar ───────────────────────────── */}
-            <footer className="flex items-center justify-center px-8 py-3 border-t border-zinc-800/60 shrink-0">
-                <p className="text-zinc-700 text-sm">
-                    نظام إدارة الطابور الذكي — جميع الحقوق محفوظة
-                </p>
+            {/* ── FOOTER ─────────────────────────────────────────────────────────── */}
+            <footer className="relative z-10 flex items-center justify-center px-8 py-2 border-t border-white/5 shrink-0">
+                <div className="flex items-center gap-6 text-zinc-700 text-xs">
+                    <span>نظام إدارة الطابور الذكي</span>
+                    <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                    <span>{queues.length} حلاق نشط</span>
+                    <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                    <span>{queues.reduce((s, bq) => s + bq.waiting.length, 0)} في الانتظار</span>
+                </div>
             </footer>
         </div>
     );
 }
 
-// ─────────────────────────────────────────────
-// Sub-components
-// ─────────────────────────────────────────────
-
-/** A single waiting-ticket card in the left panel */
-function WaitingCard({ ticket, rank }: { ticket: Ticket; rank: number }) {
-    const colors = [
-        'border-amber-500/40 bg-amber-500/5 text-amber-300',
-        'border-zinc-600/40 bg-zinc-800/40 text-zinc-300',
-        'border-zinc-700/30 bg-zinc-800/20 text-zinc-400',
-        'border-zinc-700/20 bg-zinc-800/10 text-zinc-500',
-    ];
-    const colorClass = colors[Math.min(rank - 1, colors.length - 1)];
+// ─────────────────────────────────────────────────────────────────────────────
+// BarberColumn — one column per barber
+// ─────────────────────────────────────────────────────────────────────────────
+function BarberColumn({
+    bq,
+    isLast,
+    totalBarbers,
+}: {
+    bq: BarberQueue;
+    isLast: boolean;
+    totalBarbers: number;
+}) {
+    // For ≥4 barbers make the number smaller
+    const numFontSize =
+        totalBarbers >= 4
+            ? 'clamp(4rem, 10vw, 9rem)'
+            : totalBarbers === 3
+                ? 'clamp(5rem, 13vw, 12rem)'
+                : 'clamp(6rem, 16vw, 16rem)';
 
     return (
         <div
             className={`
-        flex items-center justify-between
-        rounded-2xl border px-5 py-4
-        transition-all duration-300
-        ${colorClass}
+        flex flex-col flex-1 min-w-0 h-full
+        ${!isLast ? 'border-l border-white/5' : ''}
       `}
         >
-            {/* Ticket number */}
-            <span
-                className="font-black leading-none"
-                style={{ fontSize: 'clamp(2.5rem, 5vw, 5rem)' }}
-            >
-                {ticket.ticket_number}
-            </span>
+            {/* Barber name header */}
+            <div className="flex items-center justify-center gap-2 py-3 px-4 border-b border-white/5 bg-white/[0.02] shrink-0">
+                <div className="w-2 h-2 rounded-full bg-amber-500/60" />
+                <span className="text-zinc-300 font-bold text-lg tracking-wide">{bq.barber.name}</span>
+            </div>
 
-            {/* Customer name + people count */}
-            <div className="text-right">
-                {ticket.customer_name && (
-                    <p className="font-semibold text-lg leading-tight">{ticket.customer_name}</p>
+            {/* Currently Serving */}
+            <div className="flex flex-col items-center justify-center flex-[3] gap-2 px-4 relative overflow-hidden">
+                {/* Ambient glow behind the number */}
+                {bq.serving && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-48 h-48 rounded-full bg-amber-500/5 blur-3xl" />
+                    </div>
                 )}
-                {ticket.people_count > 1 && (
-                    <p className="text-sm opacity-70">
-                        {ticket.people_count} أشخاص
-                    </p>
+
+                <p className="text-zinc-600 text-sm font-semibold tracking-widest uppercase z-10">
+                    الرقم الحالي
+                </p>
+
+                {bq.serving ? (
+                    <div className="flex flex-col items-center gap-1 z-10">
+                        {/* The big number */}
+                        <div
+                            className={`font-black leading-none select-none text-amber-400 drop-shadow-[0_0_30px_rgba(245,158,11,0.5)] ${bq.pulsing ? 'animate-tv-pulse' : ''
+                                }`}
+                            style={{ fontSize: numFontSize }}
+                        >
+                            {bq.serving.ticket_number}
+                        </div>
+                        {bq.serving.customer_name && (
+                            <p className="text-zinc-500 text-base font-medium mt-1 truncate max-w-full px-2">
+                                {bq.serving.customer_name}
+                            </p>
+                        )}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center gap-2 opacity-20 z-10">
+                        <div
+                            className="font-black leading-none text-zinc-600"
+                            style={{ fontSize: numFontSize }}
+                        >
+                            ـ
+                        </div>
+                        <p className="text-zinc-600 text-sm">لا يوجد الآن</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Divider */}
+            <div className="mx-6 h-px bg-white/5 shrink-0" />
+
+            {/* Waiting list */}
+            <div className="flex flex-col flex-[2] min-h-0 px-3 py-3 gap-2 overflow-hidden">
+                <p className="text-zinc-600 text-xs font-semibold tracking-widest text-center shrink-0 mb-1">
+                    في الانتظار
+                </p>
+
+                {bq.waiting.length === 0 ? (
+                    <div className="flex-1 flex items-center justify-center">
+                        <p className="text-zinc-800 text-sm">لا يوجد انتظار</p>
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-1.5 overflow-hidden">
+                        {bq.waiting.map((ticket, i) => (
+                            <SmallWaitingRow key={ticket.id} ticket={ticket} rank={i} />
+                        ))}
+                    </div>
                 )}
             </div>
         </div>
     );
 }
 
-/** Live clock — updates every second */
-function LiveClock() {
-    const [time, setTime] = useState(() => formatTime(new Date()));
+// ─────────────────────────────────────────────────────────────────────────────
+// SmallWaitingRow — compact waiting ticket row
+// ─────────────────────────────────────────────────────────────────────────────
+function SmallWaitingRow({ ticket, rank }: { ticket: Ticket; rank: number }) {
+    const opacity = ['opacity-80', 'opacity-60', 'opacity-40', 'opacity-30'][Math.min(rank, 3)];
+    return (
+        <div
+            className={`
+        flex items-center justify-between
+        rounded-xl border border-white/5 bg-white/[0.03]
+        px-3 py-2 ${opacity} transition-all
+      `}
+        >
+            <span className="font-black text-amber-400/80 text-2xl leading-none">
+                {ticket.ticket_number}
+            </span>
+            {ticket.customer_name && (
+                <span className="text-zinc-500 text-sm truncate max-w-[60%]">{ticket.customer_name}</span>
+            )}
+        </div>
+    );
+}
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LiveClock
+// ─────────────────────────────────────────────────────────────────────────────
+function LiveClock() {
+    const [time, setTime] = useState(() => fmtTime(new Date()));
     useEffect(() => {
-        const id = setInterval(() => setTime(formatTime(new Date())), 1000);
+        const id = setInterval(() => setTime(fmtTime(new Date())), 1000);
         return () => clearInterval(id);
     }, []);
-
     return (
-        <span className="text-zinc-500 text-lg font-mono tabular-nums">
+        <span className="text-zinc-400 text-xl font-mono font-bold tabular-nums">
             {time}
         </span>
     );
 }
 
-function formatTime(d: Date): string {
+function fmtTime(d: Date) {
     return d.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' });
 }

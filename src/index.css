@@ -193,6 +193,28 @@
   animation: tv-pulse 0.85s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* ── TV Display — premium background ───────────────────────────────────────── */
+
+/* Deep dark base: radial amber glow at center-bottom + pitch-black sides */
+.tv-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 110%, rgba(245, 158, 11, 0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 15% 0%, rgba(245, 158, 11, 0.04) 0%, transparent 60%),
+    #08080c;
+}
+
+/* Subtle dot-grid overlay — gives a premium studio look */
+.tv-grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black 40%, transparent 100%);
+}
+
+
+
 /* iOS-style bottom sheet animation */
 [data-state="open"] {
   animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
