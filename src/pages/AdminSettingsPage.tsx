@@ -202,27 +202,27 @@ export default function AdminSettingsPage() {
 
     if (loading) {
         return (
-            <div className="min-h-[100dvh] bg-slate-950 flex flex-col items-center justify-center">
-                <Loader2 className="w-12 h-12 text-amber-500 animate-spin mb-4" />
-                <p className="text-amber-500/80 font-medium">جاري تحميل الإعدادات...</p>
+            <div className="min-h-[100dvh] bg-zinc-950 flex flex-col items-center justify-center">
+                <Loader2 className="w-12 h-12 text-yellow-400 animate-spin mb-4" />
+                <p className="text-yellow-400/80 font-medium">جاري تحميل الإعدادات...</p>
             </div>
         );
     }
 
     return (
-        <div className="min-h-[100dvh] bg-slate-950 relative overflow-hidden pb-12">
+        <div className="min-h-[100dvh] bg-zinc-950 relative overflow-hidden pb-12">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
 
             {/* Header */}
-            <header className="sticky top-0 z-50 bg-black/60 backdrop-blur-xl border-b border-amber-500/10 relative mb-8">
+            <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-zinc-800 relative mb-8">
                 <div className="max-w-4xl mx-auto px-4 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <h1 className="font-black text-2xl text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-500">إعدادات النظام</h1>
+                        <h1 className="font-black text-2xl text-white">إعدادات <span className="text-yellow-400">النظام</span></h1>
                     </div>
                     <Button
                         variant="ghost"
                         onClick={() => navigate('/admin')}
-                        className="rounded-xl hover:bg-amber-500/10 text-amber-500/70 hover:text-amber-400 transition-colors gap-2"
+                        className="rounded-xl hover:bg-zinc-900 text-zinc-400 hover:text-white transition-colors gap-2"
                     >
                         العودة للوحة التحكم
                         <ArrowRight className="w-5 h-5" />
@@ -232,27 +232,27 @@ export default function AdminSettingsPage() {
 
             <div className="max-w-4xl mx-auto px-4 relative z-10 space-y-8">
                 {/* Shop Settings */}
-                <Card className="rounded-[2.5rem] border border-amber-500/10 bg-gradient-to-b from-slate-950 to-black backdrop-blur-xl shadow-2xl overflow-hidden relative group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <CardHeader className="border-b border-white/5 pb-6">
+                <Card className="rounded-[2.5rem] border border-zinc-800/80 bg-zinc-950/50 backdrop-blur-xl shadow-2xl overflow-hidden relative group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <CardHeader className="border-b border-zinc-800/80 pb-6">
                         <CardTitle className="flex items-center gap-3 text-2xl text-white">
-                            <Store className="w-7 h-7 text-amber-500" />
+                            <Store className="w-7 h-7 text-yellow-400" />
                             معلومات الصالون الأساسية
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-8 space-y-8 relative z-10">
                         {/* Logo Upload */}
-                        <div className="flex flex-col sm:flex-row items-center gap-8 bg-black/40 p-6 rounded-3xl border border-white/5">
-                            <div className="w-32 h-32 rounded-[2rem] border-2 border-dashed border-white/10 flex items-center justify-center overflow-hidden bg-slate-950/50 relative group/logo">
+                        <div className="flex flex-col sm:flex-row items-center gap-8 bg-black/40 p-6 rounded-3xl border border-zinc-800/50">
+                            <div className="w-32 h-32 rounded-[2rem] border-2 border-dashed border-zinc-700 flex items-center justify-center overflow-hidden bg-zinc-900/50 relative group/logo">
                                 {logoPreview ? (
                                     <>
                                         <img src={logoPreview} alt="Shop Logo" className="w-full h-full object-cover" />
                                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity">
-                                            <Upload className="w-8 h-8 text-amber-500" />
+                                            <Upload className="w-8 h-8 text-yellow-400" />
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="flex flex-col items-center text-slate-500">
+                                    <div className="flex flex-col items-center text-zinc-500">
                                         <Upload className="w-8 h-8 mb-2 opacity-50" />
                                         <span className="text-xs font-medium">رفع شعار</span>
                                     </div>
@@ -266,44 +266,44 @@ export default function AdminSettingsPage() {
                             </div>
                             <div className="flex-1 text-center sm:text-right">
                                 <h3 className="text-lg font-bold text-white mb-2">شعار الصالون</h3>
-                                <p className="text-slate-400 text-sm">اختر صورة واضحة ومميزة لصالونك. يفضل أن تكون بخلفية شفافة (PNG).</p>
+                                <p className="text-zinc-500 text-sm">اختر صورة واضحة ومميزة لصالونك. يفضل أن تكون بخلفية شفافة (PNG).</p>
                             </div>
                         </div>
 
                         <div className="space-y-4">
-                            <Label className="text-slate-300 font-medium text-base ml-2">اسم الصالون</Label>
+                            <Label className="text-zinc-300 font-medium text-base ml-2">اسم الصالون</Label>
                             <Input
                                 value={shopName}
                                 onChange={(e) => setShopName(e.target.value)}
                                 placeholder="اسم الصالون..."
-                                className="rounded-2xl h-14 bg-black/50 border-white/5 focus-visible:ring-amber-500 focus-visible:border-amber-500/50 text-white placeholder:text-slate-600 text-lg transition-all hover:border-amber-500/30"
+                                className="rounded-2xl h-14 bg-black/50 border-zinc-800 focus-visible:ring-yellow-400 focus-visible:border-yellow-400/50 text-white placeholder:text-zinc-700 text-lg transition-all hover:border-zinc-700"
                             />
                         </div>
 
                         <div className="space-y-4">
-                            <Label className="text-slate-300 font-medium text-base ml-2 flex items-center gap-2">
+                            <Label className="text-zinc-300 font-medium text-base ml-2 flex items-center gap-2">
                                 رابط خرائط Google
-                                <MapPin className="w-4 h-4 text-amber-500" />
+                                <MapPin className="w-4 h-4 text-yellow-400" />
                             </Label>
                             <Input
                                 value={mapsUrl}
                                 onChange={(e) => setMapsUrl(e.target.value)}
                                 placeholder="https://maps.google.com/..."
-                                className="rounded-2xl h-14 bg-black/50 border-white/5 focus-visible:ring-amber-500 focus-visible:border-amber-500/50 text-white placeholder:text-slate-600 text-lg transition-all hover:border-amber-500/30 text-left"
+                                className="rounded-2xl h-14 bg-black/50 border-zinc-800 focus-visible:ring-yellow-400 focus-visible:border-yellow-400/50 text-white placeholder:text-zinc-700 text-lg transition-all hover:border-zinc-700 text-left"
                                 dir="ltr"
                             />
                         </div>
 
                         <div className="space-y-4">
-                            <Label className="text-slate-300 font-medium text-base ml-2 flex items-center gap-2">
+                            <Label className="text-zinc-300 font-medium text-base ml-2 flex items-center gap-2">
                                 رقم هاتف المحل
-                                <Smartphone className="w-4 h-4 text-amber-500" />
+                                <Smartphone className="w-4 h-4 text-yellow-400" />
                             </Label>
                             <Input
                                 value={shopPhone}
                                 onChange={(e) => setShopPhone(e.target.value)}
                                 placeholder="05xxxxxxxx"
-                                className="rounded-2xl h-14 bg-black/50 border-white/5 focus-visible:ring-amber-500 focus-visible:border-amber-500/50 text-white placeholder:text-slate-600 text-lg transition-all hover:border-amber-500/30 text-left"
+                                className="rounded-2xl h-14 bg-black/50 border-zinc-800 focus-visible:ring-yellow-400 focus-visible:border-yellow-400/50 text-white placeholder:text-zinc-700 text-lg transition-all hover:border-zinc-700 text-left"
                                 dir="ltr"
                                 type="tel"
                             />
@@ -312,7 +312,7 @@ export default function AdminSettingsPage() {
                         <Button
                             onClick={saveShopSettings}
                             disabled={saving}
-                            className="w-full rounded-2xl h-16 bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-slate-950 text-lg font-black mt-4 shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all hover:scale-[1.01] hover:shadow-[0_0_30px_rgba(245,158,11,0.6)] border border-amber-300/50"
+                            className="w-full rounded-2xl h-16 bg-yellow-400 hover:bg-yellow-500 text-black text-lg font-black mt-4 shadow-[0_0_20px_rgba(250,204,21,0.2)] transition-all hover:scale-[1.01] hover:shadow-[0_0_30px_rgba(250,204,21,0.4)] border-none"
                         >
                             {saving ? (
                                 <Loader2 className="w-6 h-6 animate-spin" />
@@ -327,15 +327,15 @@ export default function AdminSettingsPage() {
                 </Card>
 
                 {/* Barbers Settings */}
-                <Card className="rounded-[2.5rem] border border-amber-500/10 bg-gradient-to-b from-slate-950 to-black backdrop-blur-xl shadow-2xl overflow-hidden relative group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <CardHeader className="border-b border-white/5 pb-6">
+                <Card className="rounded-[2.5rem] border border-zinc-800/80 bg-zinc-950/50 backdrop-blur-xl shadow-2xl overflow-hidden relative group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <CardHeader className="border-b border-zinc-800/80 pb-6">
                         <div className="flex justify-between items-center">
                             <CardTitle className="flex items-center gap-3 text-2xl text-white">
-                                <Scissors className="w-7 h-7 text-amber-500" />
+                                <Scissors className="w-7 h-7 text-yellow-400" />
                                 إدارة الحلاقين
                             </CardTitle>
-                            <span className="bg-slate-900 text-amber-500 px-4 py-1.5 rounded-full font-bold text-sm border border-amber-500/20">
+                            <span className="bg-zinc-900 text-yellow-400 px-4 py-1.5 rounded-full font-bold text-sm border border-yellow-400/20">
                                 {barbers.length} حلاق
                             </span>
                         </div>
@@ -347,7 +347,7 @@ export default function AdminSettingsPage() {
                                 value={newBarberName}
                                 onChange={(e) => setNewBarberName(e.target.value)}
                                 placeholder="اسم الحلاق الجديد..."
-                                className="flex-1 rounded-2xl h-14 bg-black/50 border-white/5 focus-visible:ring-amber-500 focus-visible:border-amber-500/50 text-white placeholder:text-slate-600 text-lg transition-all hover:border-amber-500/30"
+                                className="flex-1 rounded-2xl h-14 bg-black/50 border-zinc-800 focus-visible:ring-yellow-400 focus-visible:border-yellow-400/50 text-white placeholder:text-zinc-700 text-lg transition-all hover:border-zinc-700"
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') addBarber();
                                 }}
@@ -355,7 +355,7 @@ export default function AdminSettingsPage() {
                             <Button
                                 onClick={addBarber}
                                 disabled={!newBarberName.trim()}
-                                className="rounded-2xl h-14 px-8 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold shadow-glow transition-all"
+                                className="rounded-2xl h-14 px-8 bg-yellow-400 hover:bg-yellow-500 text-black font-bold shadow-glow transition-all"
                             >
                                 <Plus className="w-5 h-5 ml-2" />
                                 إضافة
@@ -364,14 +364,14 @@ export default function AdminSettingsPage() {
 
                         <div className="grid gap-4 mt-8">
                             {barbers.map((barber) => (
-                                <div key={barber.id} className="flex items-center justify-between p-5 bg-black/40 rounded-2xl border border-white/5 hover:border-amber-500/30 transition-all hover:shadow-[0_0_15px_rgba(245,158,11,0.05)]">
+                                <div key={barber.id} className="flex items-center justify-between p-5 bg-black/40 rounded-2xl border border-zinc-800/50 hover:border-yellow-400/30 transition-all hover:shadow-[0_0_15px_rgba(250,204,21,0.05)]">
                                     <div className="flex items-center gap-4">
-                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${barber.is_active ? 'bg-green-500/10 border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.2)]' : 'bg-slate-900 border-white/10'}`}>
-                                            <Scissors className={`w-6 h-6 ${barber.is_active ? 'text-green-500' : 'text-slate-600'}`} />
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${barber.is_active ? 'bg-green-500/10 border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.2)]' : 'bg-zinc-900 border-zinc-800'}`}>
+                                            <Scissors className={`w-6 h-6 ${barber.is_active ? 'text-green-500' : 'text-zinc-600'}`} />
                                         </div>
                                         <div>
                                             <p className="font-bold text-white text-lg">{barber.name}</p>
-                                            <p className={`text-sm font-medium ${barber.is_active ? 'text-green-400' : 'text-slate-500'}`}>
+                                            <p className={`text-sm font-medium ${barber.is_active ? 'text-green-400' : 'text-zinc-500'}`}>
                                                 {barber.is_active ? 'متاح للعمل' : 'غير متاح حالياً'}
                                             </p>
                                         </div>
@@ -380,7 +380,7 @@ export default function AdminSettingsPage() {
                                         <Switch
                                             checked={barber.is_active}
                                             onCheckedChange={() => toggleBarberStatus(barber.id, barber.is_active)}
-                                            className="data-[state=checked]:bg-green-500 shadow-glow"
+                                            className="data-[state=checked]:bg-green-500"
                                         />
                                     </div>
                                 </div>
@@ -388,8 +388,8 @@ export default function AdminSettingsPage() {
 
                             {barbers.length === 0 && (
                                 <div className="text-center py-8 opacity-50">
-                                    <Scissors className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                                    <p className="text-slate-400 text-lg font-medium">لم يتم إضافة أي حلاقين بعد</p>
+                                    <Scissors className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+                                    <p className="text-zinc-500 text-lg font-medium">لم يتم إضافة أي حلاقين بعد</p>
                                 </div>
                             )}
                         </div>
