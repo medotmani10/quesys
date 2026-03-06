@@ -308,7 +308,11 @@ export default function LandingPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-row items-center gap-3 mt-4 sm:justify-start">
                   <AlertDialogCancel className="mt-0 flex-1 rounded-xl border-zinc-800 bg-black/50 text-white hover:bg-white/5 hover:text-white">إلغاء</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => supabase.auth.signOut()} className="flex-1 rounded-xl bg-red-500 text-white hover:bg-red-600 font-bold border-none shadow-lg shadow-red-500/20">
+                  <AlertDialogAction onClick={async () => {
+                    await supabase.auth.signOut();
+                    navigate('/');
+                    window.scrollTo(0, 0);
+                  }} className="flex-1 rounded-xl bg-red-500 text-white hover:bg-red-600 font-bold border-none shadow-lg shadow-red-500/20">
                     تسجيل الخروج
                   </AlertDialogAction>
                 </AlertDialogFooter>
