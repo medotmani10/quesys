@@ -1,4 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="100" fill="#09090b"/>
-  <path d="M 170 160 C 130 160 110 190 120 220 L 256 400 L 392 220 C 402 190 382 160 342 160 C 310 160 280 190 256 210 C 232 190 202 160 170 160 Z" fill="#facc15" />
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="50%" stop-color="#facc15" />
+      <stop offset="100%" stop-color="#a16207" />
+    </linearGradient>
+    <radialGradient id="bgGrad" cx="50%" cy="0%" r="100%">
+      <stop offset="0%" stop-color="#27272a" />
+      <stop offset="100%" stop-color="#000000" />
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  
+  <!-- Decorative Rings -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="url(#goldGrad)" stroke-width="4" opacity="0.2" stroke-dasharray="15 15"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="url(#goldGrad)" stroke-width="2" opacity="0.6"/>
+
+  <!-- Sparkles -->
+  <path d="M 360 140 Q 370 140 370 130 Q 370 140 380 140 Q 370 140 370 150 Q 370 140 360 140 Z" fill="url(#goldGrad)"/>
+  <path d="M 140 360 Q 145 360 145 355 Q 145 360 150 360 Q 145 360 145 365 Q 145 360 140 360 Z" fill="url(#goldGrad)"/>
+
+  <!-- Scissors Icon -->
+  <g transform="translate(136, 136) scale(10)" stroke="url(#goldGrad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="6" cy="6" r="3"/>
+    <path d="M8.12 8.12 12 12"/>
+    <path d="M20 4 8.12 15.88"/>
+    <circle cx="6" cy="18" r="3"/>
+    <path d="M14.8 14.8 20 20"/>
+  </g>
 </svg>
