@@ -171,6 +171,7 @@ export default function LandingPage() {
   const [loading, setLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [statsVisible, setStatsVisible] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const statsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -186,20 +187,36 @@ export default function LandingPage() {
     );
     if (statsRef.current) observer.observe(statsRef.current);
 
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
     return () => {
       authListener.subscription.unsubscribe();
       observer.disconnect();
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
 
-  const handleAppDownload = () => {
-    // Show splash screen
-    setIsSplashOpen(true);
-    // After 2.5 seconds, hide splash screen and open SignUp / Login
-    setTimeout(() => {
-      setIsSplashOpen(false);
-      setIsSignUpOpen(true);
-    }, 2500);
+  const handleAppDownload = async () => {
+    if (deferredPrompt) {
+      // Show the install prompt
+      deferredPrompt.prompt();
+      // Wait for the user to respond to the prompt
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      // Fallback if app is already installed or browser doesn't support it
+      setIsSplashOpen(true);
+      setTimeout(() => {
+        setIsSplashOpen(false);
+        setIsSignUpOpen(true);
+      }, 2500);
+    }
   };
 
   const checkUser = async () => {
