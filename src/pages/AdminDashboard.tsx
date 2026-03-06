@@ -376,89 +376,114 @@ export default function AdminDashboard() {
 
       {/* ─── HEADER ─── */}
       <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl border-b border-zinc-800/80">
-        <div className="w-full max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          {/* Brand */}
-          <div className="flex items-center gap-3">
-            {shop.logo_url
-              ? <img src={shop.logo_url} alt={shop.name} className="w-10 h-10 object-contain rounded-xl border border-zinc-800" />
-              : <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shrink-0 shadow-[0_0_12px_2px_rgba(250,204,21,0.25)]">
-                <Scissors className="w-5 h-5 text-black" />
+        <div className="w-full px-4 md:px-8 lg:px-12 py-3 flex flex-col md:flex-row justify-between gap-4">
+
+          {/* Top Level: Brand and Mobile Toggle */}
+          <div className="flex items-center justify-between w-full md:w-auto">
+            {/* Brand */}
+            <div className="flex items-center gap-3">
+              {shop.logo_url
+                ? <img src={shop.logo_url} alt={shop.name} className="w-10 h-10 object-contain rounded-xl border border-zinc-800" />
+                : <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center shrink-0 shadow-[0_0_12px_2px_rgba(250,204,21,0.25)]">
+                  <Scissors className="w-5 h-5 text-black" />
+                </div>
+              }
+              <div>
+                <h1 className="font-black text-white text-base leading-tight truncate max-w-[150px] sm:max-w-[200px]">{shop.name}</h1>
+                <button onClick={copyShopLink}
+                  className="flex items-center gap-1 text-xs text-zinc-500 hover:text-yellow-400 transition-colors font-semibold">
+                  <Copy className="w-3 h-3" /> نسخ الرابط
+                </button>
               </div>
-            }
-            <div>
-              <h1 className="font-black text-white text-base leading-tight">{shop.name}</h1>
-              <button onClick={copyShopLink}
-                className="flex items-center gap-1 text-xs text-zinc-500 hover:text-yellow-400 transition-colors font-semibold">
-                <Copy className="w-3 h-3" /> نسخ رابط الصالون
+            </div>
+
+            {/* Mobile Open/Close Toggle */}
+            <div className="flex items-center gap-2 md:hidden">
+              <button
+                onClick={toggleShopStatus}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-black transition-all duration-300',
+                  shop.is_open
+                    ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                    : 'bg-zinc-900 border-zinc-700 text-zinc-500'
+                )}
+              >
+                <span className={cn('w-2 h-2 rounded-full transition-colors shrink-0', shop.is_open ? 'bg-green-400 animate-pulse' : 'bg-zinc-600')} />
+                {shop.is_open ? 'مفتوح' : 'مغلق'}
               </button>
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-2">
-            {/* Open/Close toggle */}
+          {/* Bottom Level / Desktop Actions */}
+          <div className="flex items-center justify-between md:justify-end gap-3 border-t border-zinc-800/50 pt-3 md:border-none md:pt-0 w-full md:w-auto">
+
+            {/* Desktop Open/Close Toggle */}
             <button
               onClick={toggleShopStatus}
               className={cn(
-                'flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-black transition-all duration-300',
+                'hidden md:flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-black transition-all duration-300',
                 shop.is_open
                   ? 'bg-green-500/10 border-green-500/30 text-green-400 hover:bg-green-500/20'
                   : 'bg-zinc-900 border-zinc-700 text-zinc-500 hover:border-zinc-500'
               )}
             >
-              <span className={cn('w-2 h-2 rounded-full transition-colors', shop.is_open ? 'bg-green-400 animate-pulse' : 'bg-zinc-600')} />
-              {shop.is_open ? 'مفتوح' : 'مغلق'}
+              <span className={cn('w-2 h-2 rounded-full transition-colors shrink-0', shop.is_open ? 'bg-green-400 animate-pulse' : 'bg-zinc-600')} />
+              <span>{shop.is_open ? 'مفتوح' : 'مغلق'}</span>
               <Switch checked={shop.is_open} onCheckedChange={() => { }} onClick={(e) => e.stopPropagation()}
                 className="data-[state=checked]:bg-green-500 scale-75 pointer-events-none" />
             </button>
 
-            {/* Sound toggle */}
-            <button
-              onClick={() => setSoundEnabled(v => !v)}
-              title={soundEnabled ? 'كتم الصوت' : 'تفعيل الصوت'}
-              className={cn(
-                'w-9 h-9 rounded-xl flex items-center justify-center border transition-all',
-                soundEnabled
-                  ? 'border-yellow-400/40 text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20'
-                  : 'border-zinc-800 text-zinc-600 bg-zinc-950 hover:border-zinc-600'
-              )}
-            >
-              {soundEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
-            </button>
+            {/* Common Action Buttons */}
+            <div className="flex items-center justify-center gap-2 flex-1 md:flex-none">
+              {/* Sound toggle */}
+              <button
+                onClick={() => setSoundEnabled(v => !v)}
+                title={soundEnabled ? 'كتم الصوت' : 'تفعيل الصوت'}
+                className={cn(
+                  'w-10 h-10 md:w-9 md:h-9 rounded-xl flex items-center justify-center border transition-all',
+                  soundEnabled
+                    ? 'border-yellow-400/40 text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20'
+                    : 'border-zinc-800 text-zinc-600 bg-zinc-950 hover:border-zinc-600'
+                )}
+              >
+                {soundEnabled ? <Bell className="w-5 h-5 md:w-4 md:h-4" /> : <BellOff className="w-5 h-5 md:w-4 md:h-4" />}
+              </button>
 
-            <button onClick={() => navigate('/admin/settings')}
-              className="w-9 h-9 rounded-xl flex items-center justify-center border border-zinc-800 text-zinc-500 hover:text-yellow-400 hover:border-zinc-600 transition-all bg-zinc-950 hover:bg-zinc-900">
-              <Settings className="w-4 h-4" />
-            </button>
-            <button onClick={() => navigate('/admin/archive')}
-              className="w-9 h-9 rounded-xl flex items-center justify-center border border-zinc-800 text-zinc-500 hover:text-yellow-400 hover:border-zinc-600 transition-all bg-zinc-950 hover:bg-zinc-900">
-              <Archive className="w-4 h-4" />
-            </button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  className="w-9 h-9 rounded-xl flex items-center justify-center border border-zinc-800 text-zinc-500 hover:text-red-400 hover:border-red-500/30 transition-all bg-zinc-950 hover:bg-zinc-900">
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="bg-zinc-950 border border-zinc-800 text-white rounded-[2rem] w-[90vw] max-w-[400px]" dir="rtl">
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="font-black text-xl text-white text-right">تسجيل الخروج</AlertDialogTitle>
-                  <AlertDialogDescription className="text-zinc-400 text-right mt-2">
-                    هل أنت متأكد أنك تريد تسجيل الخروج؟ ستحتاج لتسجيل الدخول مرة أخرى للوصول إلى لوحة التحكم.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter className="flex-row items-center gap-3 mt-4 sm:justify-start">
-                  <AlertDialogCancel className="mt-0 flex-1 rounded-xl border-zinc-800 bg-black/50 text-white hover:bg-white/5 hover:text-white">إلغاء</AlertDialogCancel>
-                  <AlertDialogAction onClick={async () => {
-                    await supabase.auth.signOut();
-                    navigate('/');
-                  }} className="flex-1 rounded-xl bg-red-500 text-white hover:bg-red-600 font-bold border-none shadow-lg shadow-red-500/20">
-                    تسجيل الخروج
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              <button onClick={() => navigate('/admin/settings')}
+                className="w-10 h-10 md:w-9 md:h-9 rounded-xl flex items-center justify-center border border-zinc-800 text-zinc-500 hover:text-yellow-400 hover:border-zinc-600 transition-all bg-zinc-950 hover:bg-zinc-900">
+                <Settings className="w-5 h-5 md:w-4 md:h-4" />
+              </button>
+              <button onClick={() => navigate('/admin/archive')}
+                className="w-10 h-10 md:w-9 md:h-9 rounded-xl flex items-center justify-center border border-zinc-800 text-zinc-500 hover:text-yellow-400 hover:border-zinc-600 transition-all bg-zinc-950 hover:bg-zinc-900">
+                <Archive className="w-5 h-5 md:w-4 md:h-4" />
+              </button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    className="w-10 h-10 md:w-9 md:h-9 rounded-xl flex items-center justify-center border border-zinc-800 text-zinc-500 hover:text-red-400 hover:border-red-500/30 transition-all bg-zinc-950 hover:bg-zinc-900">
+                    <LogOut className="w-5 h-5 md:w-4 md:h-4" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-zinc-950 border border-zinc-800 text-white rounded-[2rem] w-[90vw] max-w-[400px]" dir="rtl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="font-black text-xl text-white text-right">تسجيل الخروج</AlertDialogTitle>
+                    <AlertDialogDescription className="text-zinc-400 text-right mt-2">
+                      هل أنت متأكد أنك تريد تسجيل الخروج؟ ستحتاج لتسجيل الدخول مرة أخرى للوصول إلى لوحة التحكم.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="flex-row items-center gap-3 mt-4 sm:justify-start">
+                    <AlertDialogCancel className="mt-0 flex-1 rounded-xl border-zinc-800 bg-black/50 text-white hover:bg-white/5 hover:text-white">إلغاء</AlertDialogCancel>
+                    <AlertDialogAction onClick={async () => {
+                      await supabase.auth.signOut();
+                      navigate('/');
+                    }} className="flex-1 rounded-xl bg-red-500 text-white hover:bg-red-600 font-bold border-none shadow-lg shadow-red-500/20">
+                      تسجيل الخروج
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
         </div>
       </header>
