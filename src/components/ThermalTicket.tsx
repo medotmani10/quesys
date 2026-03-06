@@ -127,66 +127,78 @@ export function ThermalTicket({
     );
 }
 
-/* ─── Print function ─── */
+/* ─── Print function — opens print dialog + auto-downloads PDF ─── */
 export function printThermalTicket(props: ThermalTicketProps) {
     const container = document.createElement('div');
+    // Position off-screen so it doesn't flash
+    container.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
     document.body.appendChild(container);
 
-    // Dynamically render with React
-    import('react-dom/client').then(({ createRoot }) => {
+    import('react-dom/client').then(async ({ createRoot }) => {
         const root = createRoot(container);
         root.render(<ThermalTicket {...props} />);
 
-        setTimeout(() => {
-            const ticketEl = container.querySelector('#thermal-ticket-content') as HTMLElement;
-            if (!ticketEl) { document.body.removeChild(container); return; }
+        // Wait for React to render
+        await new Promise(r => setTimeout(r, 350));
 
-            const printWindow = window.open('', '_blank', 'width=250,height=600');
-            if (!printWindow) { document.body.removeChild(container); return; }
+        const ticketEl = container.querySelector('#thermal-ticket-content') as HTMLElement;
+        if (!ticketEl) { document.body.removeChild(container); return; }
 
+        // ── 1. PDF download ──
+        try {
+            const html2pdf = (await import('html2pdf.js')).default;
+            // Derive a clean filename from barber initial + ticket number
+            const prefix = props.barberName ? props.barberName[0].toUpperCase() : 'T';
+            const code = `${prefix}${String(props.ticketNumber).padStart(3, '0')}`;
+            await html2pdf()
+                .set({
+                    margin: 0,
+                    filename: `تذكرة-${code}-${props.customerName}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 3, useCORS: true, logging: false },
+                    jsPDF: { unit: 'mm', format: [58, 180], orientation: 'portrait' },
+                })
+                .from(ticketEl)
+                .save();
+        } catch (err) {
+            console.error('PDF download failed:', err);
+        }
+
+        // ── 2. Thermal print dialog ──
+        const printWindow = window.open('', '_blank', 'width=250,height=620');
+        if (printWindow) {
             printWindow.document.write(`
-        <!DOCTYPE html>
-        <html dir="rtl" lang="ar">
-        <head>
-          <meta charset="UTF-8">
-          <title>تذكرة #${props.ticketNumber}</title>
-          <link rel="preconnect" href="https://fonts.googleapis.com">
-          <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            @page {
-              size: 58mm auto;
-              margin: 0;
-            }
-            body {
-              font-family: 'Cairo', monospace;
-              background: #fff;
-              color: #000;
-              width: 58mm;
-            }
-            @media print {
-              body { width: 58mm; }
-            }
-          </style>
-        </head>
-        <body>
-          ${ticketEl.outerHTML}
-          <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.print();
-                setTimeout(function() { window.close(); }, 500);
-              }, 800);
-            };
-          <\/script>
-        </body>
-        </html>
-      `);
-
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>تذكرة #${props.ticketNumber}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    @page { size: 58mm auto; margin: 0; }
+    body { font-family: 'Cairo', monospace; background: #fff; color: #000; width: 58mm; }
+    @media print { body { width: 58mm; } }
+  </style>
+</head>
+<body>
+  ${ticketEl.outerHTML}
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+        setTimeout(function() { window.close(); }, 500);
+      }, 800);
+    };
+  <\/script>
+</body>
+</html>`);
             printWindow.document.close();
-            root.unmount();
-            document.body.removeChild(container);
-        }, 300);
+        }
+
+        root.unmount();
+        document.body.removeChild(container);
     });
 }
 
