@@ -207,10 +207,7 @@ export default function LandingPage() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      if (error.message === 'Email not confirmed') {
-        await supabase.auth.resend({ type: 'signup', email });
-        toast.error('البريد غير مؤكد. تم إرسال رابط التأكيد.');
-      } else if (error.message === 'Invalid login credentials') {
+      if (error.message === 'Invalid login credentials') {
         toast.error('البريد أو كلمة المرور غير صحيحة');
       } else toast.error(error.message);
     } else {
