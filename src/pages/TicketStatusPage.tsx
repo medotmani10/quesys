@@ -24,7 +24,7 @@ export default function TicketStatusPage() {
 
     useEffect(() => {
         if (ticket && (ticket.status === 'waiting' || ticket.status === 'serving')) {
-            subscribeToUpdates();
+            return subscribeToUpdates();
         }
     }, [ticket?.id, ticket?.status]);
 
@@ -101,7 +101,8 @@ export default function TicketStatusPage() {
                 }
             })
             .subscribe();
-        return () => sub.unsubscribe();
+        // ✅ FIXED C-5: properly remove channel on cleanup
+        return () => { supabase.removeChannel(sub); };
     };
 
     const handleCancel = async () => {

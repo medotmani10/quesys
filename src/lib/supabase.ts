@@ -1,7 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// ✅ FIXED H-5: fail fast instead of silently using empty strings
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    '[Barber Ticket] Missing required env variables: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set in your .env file.'
+  );
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

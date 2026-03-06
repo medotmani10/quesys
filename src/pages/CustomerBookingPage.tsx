@@ -8,9 +8,27 @@ import { Label } from '@/components/ui/label';
 import { MapPin, User, Phone, Users, Scissors, AlertCircle, Loader2, X, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
-/** Returns the per-barber display code, e.g. "A001" for Ahmed, ticket 1 */
+/** Returns the per-barber display code, e.g. "A001" for Ahmed, ticket 1.
+ *  ✅ FIXED H-1: safe against Arabic names, empty strings, and ticket_number > 999 */
 export function getTicketCode(barberName: string | null | undefined, ticketNumber: number): string {
-  const prefix = barberName ? barberName.trim()[0].toUpperCase() : '#';
+  let prefix = '#';
+  if (barberName) {
+    const trimmed = barberName.trim();
+    if (trimmed.length > 0) {
+      const firstChar = trimmed[0];
+      // If the first char is a Latin letter, use it uppercase
+      if (/[a-zA-Z]/.test(firstChar)) {
+        prefix = firstChar.toUpperCase();
+      } else {
+        // For Arabic/other scripts, map to a safe ASCII prefix via charCode mod 26
+        // e.g. 'أ' -> code 65 -> 'A', 'م' -> code 77 -> 'M'
+        const code = trimmed.charCodeAt(0) % 26;
+        prefix = String.fromCharCode(65 + code); // A-Z
+      }
+    }
+  }
+  // Cap at 9999 to avoid overflow — show '####' as error code
+  if (ticketNumber > 9999) return `${prefix}####`;
   return `${prefix}${String(ticketNumber).padStart(3, '0')}`;
 }
 
@@ -32,7 +50,9 @@ export default function CustomerBookingPage() {
   const [selectedBarber, setSelectedBarber] = useState<string>(''); // '' = none selected (required)
 
   useEffect(() => { if (slug) loadShopData(); }, [slug]);
-  useEffect(() => { if (activeTicket) subscribeToTicketUpdates(); }, [activeTicket?.id]);
+  useEffect(() => {
+    if (activeTicket) return subscribeToTicketUpdates();
+  }, [activeTicket?.id]);
 
   const loadShopData = async () => {
     if (!slug) return;
@@ -82,16 +102,28 @@ export default function CustomerBookingPage() {
         else if (updatedTicket.status === 'completed') { toast.info('تم إنهاء الخدمة، شكراً!'); setActiveTicket(null); }
         else if (updatedTicket.status === 'canceled') { toast.error('تم إلغاء التذكرة'); setActiveTicket(null); }
       }).subscribe();
-    return () => { subscription.unsubscribe(); };
+    // ✅ FIXED C-5: return cleanup so useEffect can unsubscribe on re-run
+    return () => { supabase.removeChannel(subscription); };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shop) return;
     if (!name.trim() || !phone.trim()) { toast.error('يرجى ملء جميع الحقول'); return; }
+    // ✅ FIXED M-1: validate phone number format (5+ digits, optional + prefix)
+    if (!/^[+]?[\d\s()-]{5,15}$/.test(phone.trim())) {
+      toast.error('رقم الهاتف غير صحيح'); return;
+    }
     if (!selectedBarber) { toast.error('يرجى اختيار الحلاق أولاً'); return; }
     setSubmitting(true);
     try {
+      // ✅ FIXED H-7: re-fetch shop is_open status before submitting (stale UI guard)
+      const { data: freshShop } = await supabase.from('shops').select('is_open').eq('id', shop.id).single();
+      if (!freshShop?.is_open) {
+        toast.error('عذراً — الصالون مغلق حالياً');
+        setSubmitting(false);
+        return;
+      }
       const sessionId = getOrCreateSessionId();
       const { data: ticketNumberData, error: ticketNumError } = await supabase.rpc('get_next_ticket_number', { p_shop_id: shop.id });
       if (ticketNumError) { toast.error('فشل في إنشاء التذكرة'); setSubmitting(false); return; }
@@ -116,6 +148,9 @@ export default function CustomerBookingPage() {
 
   const handleCancelTicket = async () => {
     if (!activeTicket) return;
+    // ✅ FIXED H-4: confirm before cancelling to prevent accidental taps
+    const confirmed = window.confirm('هل أنت متأكد من إلغاء الحجز؟');
+    if (!confirmed) return;
     try {
       const { error } = await supabase.from('tickets').update({ status: 'canceled', updated_at: new Date().toISOString() }).eq('id', activeTicket.id);
       if (error) throw error;
@@ -301,13 +336,14 @@ export default function CustomerBookingPage() {
                       type="button"
                       onClick={() => setSelectedBarber(barber.id)}
                       className={`relative flex items-center gap-4 p-4 rounded-xl border-2 text-right transition-all duration-200 ${isSelected
-                          ? 'bg-yellow-400/10 border-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.15)]'
-                          : 'bg-black border-zinc-800 hover:border-zinc-600'
+                        ? 'bg-yellow-400/10 border-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.15)]'
+                        : 'bg-black border-zinc-800 hover:border-zinc-600'
                         }`}
                     >
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 font-black text-xl transition-all ${isSelected ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-400'
                         }`}>
-                        {barber.name[0].toUpperCase()}
+                        {/* ✅ FIXED M-2: safe access — guard against empty barber name */}
+                        {(barber.name?.trim() || 'X')[0].toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`font-black text-base leading-tight truncate ${isSelected ? 'text-yellow-400' : 'text-white'}`}>

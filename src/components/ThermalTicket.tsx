@@ -1,5 +1,14 @@
 import { QRCodeSVG } from 'qrcode.react';
 
+// ✅ FIXED C-4: strip script tags and event handlers from HTML before printing
+function sanitizeHtml(html: string): string {
+    return html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/\son\w+\s*=\s*(["']).*?\1/gi, '')
+        .replace(/\son\w+\s*=[^\s>]*/gi, '')
+        .replace(/javascript:/gi, 'blocked:');
+}
+
 interface ThermalTicketProps {
     ticketNumber: number;
     ticketId: string;
@@ -147,8 +156,11 @@ export function printThermalTicket(props: ThermalTicketProps) {
         // ── 1. PDF download ──
         try {
             const html2pdf = (await import('html2pdf.js')).default;
-            // Derive a clean filename from barber initial + ticket number
-            const prefix = props.barberName ? props.barberName[0].toUpperCase() : 'T';
+            // ✅ FIXED C-4: use ASCII-safe prefix for filename (no Arabic chars)
+            const firstChar = props.barberName?.trim()[0] ?? 'T';
+            const prefix = /[a-zA-Z]/.test(firstChar)
+                ? firstChar.toUpperCase()
+                : String.fromCharCode(65 + (firstChar.charCodeAt(0) % 26));
             const code = `${prefix}${String(props.ticketNumber).padStart(3, '0')}`;
             await html2pdf()
                 .set({
@@ -183,7 +195,7 @@ export function printThermalTicket(props: ThermalTicketProps) {
   </style>
 </head>
 <body>
-  ${ticketEl.outerHTML}
+  ${sanitizeHtml(ticketEl.outerHTML)}
   <script>
     window.onload = function() {
       setTimeout(function() {
