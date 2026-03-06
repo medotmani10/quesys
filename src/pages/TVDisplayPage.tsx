@@ -281,8 +281,8 @@ export default function TVDisplayPage() {
                         </div>
                     )}
                     <div>
-                        <p className="text-xs text-zinc-500 font-medium tracking-widest uppercase">صالون</p>
-                        <h1 className="text-2xl font-black text-white leading-tight">{shop?.name ?? '…'}</h1>
+                        <p className="text-xs text-white/70 font-medium tracking-widest uppercase drop-shadow-sm">صالون</p>
+                        <h1 className="text-2xl font-black text-white leading-tight drop-shadow-md">{shop?.name ?? '…'}</h1>
                     </div>
                 </div>
 
@@ -297,7 +297,7 @@ export default function TVDisplayPage() {
                             إعادة الاتصال…
                         </span>
                     ) : (
-                        <span className="flex items-center gap-2 text-emerald-400 text-sm font-medium">
+                        <span className="flex items-center gap-2 text-emerald-400 text-sm font-bold drop-shadow-md">
                             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-dot" />
                             بث مباشر
                         </span>
@@ -321,21 +321,20 @@ export default function TVDisplayPage() {
                 {/* Empty state while loading */}
                 {queues.length === 0 && (
                     <div className="flex-1 flex items-center justify-center">
-                        <div className="flex flex-col items-center gap-4 opacity-30">
-                            <div className="text-5xl animate-pulse">✂️</div>
-                            <p className="text-zinc-500 text-xl">جاري تحميل البيانات…</p>
+                        <div className="flex flex-col items-center gap-4 opacity-70">
+                            <div className="text-5xl animate-pulse drop-shadow-lg">✂️</div>
+                            <p className="text-white text-xl font-bold drop-shadow-md">جاري تحميل البيانات…</p>
                         </div>
                     </div>
                 )}
             </main>
 
-            {/* ── FOOTER ─────────────────────────────────────────────────────────── */}
-            <footer className="relative z-10 flex items-center justify-center px-8 py-2 border-t border-white/5 shrink-0">
-                <div className="flex items-center gap-6 text-zinc-700 text-xs">
+            <footer className="relative z-10 flex items-center justify-center px-8 py-3 border-t border-white/10 shrink-0 bg-black/20 backdrop-blur-sm">
+                <div className="flex items-center gap-6 text-white/80 font-medium text-sm drop-shadow-md">
                     <span>نظام إدارة الطابور الذكي</span>
-                    <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/50" />
                     <span>{queues.length} حلاق نشط</span>
-                    <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/50" />
                     <span>{queues.reduce((s, bq) => s + bq.waiting.length, 0)} في الانتظار</span>
                 </div>
             </footer>
@@ -371,9 +370,9 @@ function BarberColumn({
       `}
         >
             {/* Barber name header */}
-            <div className="flex items-center justify-center gap-2 py-3 px-4 border-b border-white/5 bg-white/[0.02] shrink-0">
-                <div className="w-2 h-2 rounded-full bg-amber-500/60" />
-                <span className="text-zinc-300 font-bold text-lg tracking-wide">{bq.barber.name}</span>
+            <div className="flex items-center justify-center gap-2 py-4 px-4 border-b border-white/20 bg-white/10 backdrop-blur-md shrink-0 shadow-sm">
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
+                <span className="text-white font-black text-2xl tracking-wide drop-shadow-md">{bq.barber.name}</span>
             </div>
 
             {/* Currently Serving */}
@@ -385,7 +384,7 @@ function BarberColumn({
                     </div>
                 )}
 
-                <p className="text-zinc-600 text-sm font-semibold tracking-widest uppercase z-10">
+                <p className="text-white/90 text-sm font-bold tracking-widest uppercase z-10 drop-shadow-md">
                     الرقم الحالي
                 </p>
 
@@ -400,7 +399,7 @@ function BarberColumn({
                             {bq.serving.ticket_number}
                         </div>
                         {bq.serving.customer_name && (
-                            <p className="text-zinc-500 text-base font-medium mt-1 truncate max-w-full px-2">
+                            <p className="text-white text-xl font-bold mt-2 truncate max-w-full px-2 drop-shadow-lg">
                                 {bq.serving.customer_name}
                             </p>
                         )}
@@ -408,12 +407,12 @@ function BarberColumn({
                 ) : (
                     <div className="flex flex-col items-center gap-2 opacity-20 z-10">
                         <div
-                            className="font-black leading-none text-zinc-600"
+                            className="font-black leading-none text-white/40 drop-shadow-md"
                             style={{ fontSize: numFontSize }}
                         >
                             ـ
                         </div>
-                        <p className="text-zinc-600 text-sm">لا يوجد الآن</p>
+                        <p className="text-white/60 font-medium text-base drop-shadow-md">لا يوجد الآن</p>
                     </div>
                 )}
             </div>
@@ -423,13 +422,13 @@ function BarberColumn({
 
             {/* Waiting list */}
             <div className="flex flex-col flex-[2] min-h-0 px-3 py-3 gap-2 overflow-hidden">
-                <p className="text-zinc-600 text-xs font-semibold tracking-widest text-center shrink-0 mb-1">
+                <p className="text-white/90 font-bold text-sm tracking-widest text-center shrink-0 mb-2 drop-shadow-md">
                     في الانتظار
                 </p>
 
                 {bq.waiting.length === 0 ? (
                     <div className="flex-1 flex items-center justify-center">
-                        <p className="text-zinc-800 text-sm">لا يوجد انتظار</p>
+                        <p className="text-white/50 font-medium text-sm drop-shadow-md">لا يوجد انتظار</p>
                     </div>
                 ) : (
                     <div className="flex flex-col gap-1.5 overflow-hidden">
@@ -452,15 +451,15 @@ function SmallWaitingRow({ ticket, rank }: { ticket: Ticket; rank: number }) {
         <div
             className={`
         flex items-center justify-between
-        rounded-xl border border-white/5 bg-white/[0.03]
-        px-3 py-2 ${opacity} transition-all
+        rounded-xl border border-white/30 bg-white/10 backdrop-blur-md
+        px-4 py-3 ${opacity} transition-all shadow-xl
       `}
         >
-            <span className="font-black text-amber-400/80 text-2xl leading-none">
+            <span className="font-black text-amber-400 text-3xl leading-none drop-shadow-md">
                 {ticket.ticket_number}
             </span>
             {ticket.customer_name && (
-                <span className="text-zinc-500 text-sm truncate max-w-[60%]">{ticket.customer_name}</span>
+                <span className="text-white font-bold text-base truncate max-w-[60%] drop-shadow-md">{ticket.customer_name}</span>
             )}
         </div>
     );
@@ -476,7 +475,7 @@ function LiveClock() {
         return () => clearInterval(id);
     }, []);
     return (
-        <span className="text-zinc-400 text-xl font-mono font-bold tabular-nums">
+        <span className="text-white/90 text-xl font-mono font-bold tabular-nums drop-shadow-md">
             {time}
         </span>
     );

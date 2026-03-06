@@ -195,12 +195,21 @@
 
 /* ── TV Display — premium background ───────────────────────────────────────── */
 
-/* Deep dark base: radial amber glow at center-bottom + pitch-black sides */
+/* Barbershop photo background — heavily darkened for text legibility */
 .tv-bg {
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 110%, rgba(245, 158, 11, 0.07) 0%, transparent 70%),
-    radial-gradient(ellipse 50% 40% at 15% 0%, rgba(245, 158, 11, 0.04) 0%, transparent 60%),
-    #08080c;
+  background-color: #040406;
+  background-image:
+    /* Heavy vignette so edges and top are nearly pitch black */
+    radial-gradient(ellipse 100% 100% at 50% 50%, transparent 10%, rgba(0, 0, 0, 0.95) 100%),
+    /* Very dark base fade: image is only slightly visible */
+    linear-gradient(to top, rgba(0, 0, 0, 0.98) 0%, rgba(0, 0, 0, 0.85) 50%, rgba(0, 0, 0, 0.8) 100%),
+    /* Subtle amber warmth at bottom-center */
+    radial-gradient(ellipse 70% 45% at 50% 110%, rgba(245, 158, 11, 0.12) 0%, transparent 70%),
+    /* The actual barbershop photo */
+    url('/hero-bg.png');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
 }
 
 /* Subtle dot-grid overlay — gives a premium studio look */
