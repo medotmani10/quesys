@@ -8,20 +8,36 @@ import AdminDashboard from '@/pages/AdminDashboard';
 import ArchivePage from '@/pages/ArchivePage';
 import AdminSettingsPage from '@/pages/AdminSettingsPage';
 
-function App() {
-  const isPWA = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+// Detect if the app is running as an installed PWA (standalone mode)
+const isPWA = window.matchMedia('(display-mode: standalone)').matches
+  || (window.navigator as any).standalone === true;
 
+function App() {
   return (
     <BrowserRouter>
       <div dir="rtl" className="min-h-[100dvh] bg-background text-foreground">
         <Routes>
+          {/* Root: landing page for web, login for PWA */}
           <Route path="/" element={isPWA ? <Navigate to="/login" replace /> : <LandingPage />} />
+
+          {/* Auth & setup — available in both modes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
-          <Route path="/:slug" element={<CustomerBookingPage />} />
+
+          {/* Admin routes — always accessible */}
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/archive" element={<ArchivePage />} />
           <Route path="/admin/settings" element={<AdminSettingsPage />} />
+
+          {/* Customer booking page:
+              - In PWA → go to admin (customers use browser link, not the installed app)
+              - In browser → show the customer booking page */}
+          <Route
+            path="/:slug"
+            element={isPWA ? <Navigate to="/admin" replace /> : <CustomerBookingPage />}
+          />
+
+          {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Toaster position="top-center" richColors />
