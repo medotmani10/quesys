@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Plus, LogOut, Archive, Users, Scissors, ChevronLeft, X, Loader2, CheckCircle, Settings, Copy, TrendingUp, Printer, Bell, BellOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { printThermalTicket } from '@/components/ThermalTicket';
@@ -433,10 +434,28 @@ export default function AdminDashboard() {
               className="w-9 h-9 rounded-xl flex items-center justify-center border border-zinc-800 text-zinc-500 hover:text-yellow-400 hover:border-zinc-600 transition-all bg-zinc-950 hover:bg-zinc-900">
               <Archive className="w-4 h-4" />
             </button>
-            <button onClick={() => supabase.auth.signOut()}
-              className="w-9 h-9 rounded-xl flex items-center justify-center border border-zinc-800 text-zinc-500 hover:text-red-400 hover:border-red-500/30 transition-all bg-zinc-950 hover:bg-zinc-900">
-              <LogOut className="w-4 h-4" />
-            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  className="w-9 h-9 rounded-xl flex items-center justify-center border border-zinc-800 text-zinc-500 hover:text-red-400 hover:border-red-500/30 transition-all bg-zinc-950 hover:bg-zinc-900">
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-zinc-950 border border-zinc-800 text-white rounded-[2rem] w-[90vw] max-w-[400px]" dir="rtl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="font-black text-xl text-white text-right">تسجيل الخروج</AlertDialogTitle>
+                  <AlertDialogDescription className="text-zinc-400 text-right mt-2">
+                    هل أنت متأكد أنك تريد تسجيل الخروج؟ ستحتاج لتسجيل الدخول مرة أخرى للوصول إلى لوحة التحكم.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-row items-center gap-3 mt-4 sm:justify-start">
+                  <AlertDialogCancel className="mt-0 flex-1 rounded-xl border-zinc-800 bg-black/50 text-white hover:bg-white/5 hover:text-white">إلغاء</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => supabase.auth.signOut()} className="flex-1 rounded-xl bg-red-500 text-white hover:bg-red-600 font-bold border-none shadow-lg shadow-red-500/20">
+                    تسجيل الخروج
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </header>

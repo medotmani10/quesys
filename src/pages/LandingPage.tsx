@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Scissors, Clock, Users, Shield, ChevronLeft, Smartphone, Navigation, CheckCircle, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -291,10 +292,28 @@ export default function LandingPage() {
           </div>
 
           {user ? (
-            <Button variant="outline" onClick={() => supabase.auth.signOut()}
-              className="rounded-xl border-zinc-700 hover:bg-white/5 text-zinc-300">
-              تسجيل الخروج
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline"
+                  className="rounded-xl border-zinc-700 hover:bg-white/5 text-zinc-300">
+                  تسجيل الخروج
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="bg-zinc-950 border border-zinc-800 text-white rounded-[2rem] w-[90vw] max-w-[400px]" dir="rtl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="font-black text-xl text-white text-right">تسجيل الخروج</AlertDialogTitle>
+                  <AlertDialogDescription className="text-zinc-400 text-right mt-2">
+                    هل أنت متأكد أنك تريد الخروج من حسابك؟
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="flex-row items-center gap-3 mt-4 sm:justify-start">
+                  <AlertDialogCancel className="mt-0 flex-1 rounded-xl border-zinc-800 bg-black/50 text-white hover:bg-white/5 hover:text-white">إلغاء</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => supabase.auth.signOut()} className="flex-1 rounded-xl bg-red-500 text-white hover:bg-red-600 font-bold border-none shadow-lg shadow-red-500/20">
+                    تسجيل الخروج
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           ) : (
             <div className="flex gap-2">
               <Button variant="ghost"
