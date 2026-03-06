@@ -120,7 +120,7 @@ export function ThermalTicket({
 
             {/* Footer */}
             <div style={{ borderTop: '1px dashed #000', marginTop: '3mm', paddingTop: '3mm', fontSize: '6.5pt', color: '#666' }}>
-                شكراً لزيارتك — BarberQueue
+                شكراً لزيارتك — Barber Ticket
             </div>
         </div>
     );

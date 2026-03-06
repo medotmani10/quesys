@@ -1,4 +1,4 @@
-# BarberQueue - نظام إدارة مصففات الشعر
+# Barber Ticket - نظام إدارة مصففات الشعر
 
 A premium, mobile-first SaaS platform for Men's Barbershops to manage queues efficiently.
 

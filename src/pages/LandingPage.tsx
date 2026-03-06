@@ -209,14 +209,20 @@ export default function LandingPage() {
       if (outcome === 'accepted') {
         setDeferredPrompt(null);
       }
+      // Continue to app UI anyway
+      showSplashAndAuth();
     } else {
       // Fallback if app is already installed or browser doesn't support it
-      setIsSplashOpen(true);
-      setTimeout(() => {
-        setIsSplashOpen(false);
-        setIsSignUpOpen(true);
-      }, 2500);
+      showSplashAndAuth();
     }
+  };
+
+  const showSplashAndAuth = () => {
+    setIsSplashOpen(true);
+    setTimeout(() => {
+      setIsSplashOpen(false);
+      setIsSignUpOpen(true);
+    }, 2500);
   };
 
   const checkUser = async () => {
