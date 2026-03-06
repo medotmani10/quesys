@@ -637,36 +637,6 @@ export default function AdminDashboard() {
           {/* ─── ALL tab ─── */}
           <TabsContent value="all" className="mt-0 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* General queue card */}
-              <div className="flex flex-col bg-zinc-950 border border-zinc-800 hover:border-yellow-400/20 rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-[0_12px_40px_-8px_rgba(0,0,0,0.8)] hover:-translate-y-1">
-                <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-800">
-                  <div className="w-10 h-10 rounded-xl bg-yellow-400/10 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-yellow-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-black text-white text-base">القائمة العامة</h3>
-                    <p className="text-xs text-zinc-500 font-semibold">أي حلاق متاح</p>
-                  </div>
-                  {getBarberTickets(null, 'waiting').length > 0 && (
-                    <span className="bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-xs font-black px-2.5 py-1 rounded-full">
-                      {getBarberTickets(null, 'waiting').length}
-                    </span>
-                  )}
-                </div>
-                <div className="p-4 space-y-2 max-h-64 overflow-y-auto scrollbar-hide flex-1">
-                  {getBarberTickets(null, 'waiting').map((t) => (
-                    <TicketRow key={t.id} ticket={t} onCancel={() => cancelTicket(t.id)} />
-                  ))}
-                  {getBarberTickets(null, 'waiting').length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-10 opacity-30">
-                      <Users className="w-10 h-10 text-zinc-600 mb-2" />
-                      <p className="text-xs text-zinc-500">لا يوجد عملاء في القائمة العامة</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Barber cards */}
               {barbers.map((barber) => (
                 <BarberCard
                   key={barber.id}
