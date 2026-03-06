@@ -50,7 +50,11 @@ export default function LoginPage() {
         } else {
             const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
             if (signUpError) {
-                toast.error(signUpError.message);
+                if (signUpError.message.toLowerCase().includes('rate') || signUpError.status === 429) {
+                    toast.error('تم تجاوز حد التسجيل المسموح به مؤقتاً. انتظر بضع دقائق وحاول مجدداً.');
+                } else {
+                    toast.error(signUpError.message);
+                }
             } else if (signUpData.user) {
                 // Auto sign-in after sign-up (email confirmation disabled in Supabase)
                 const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
