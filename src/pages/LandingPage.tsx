@@ -265,7 +265,7 @@ export default function LandingPage() {
 
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-yellow-400/30 font-sans">
+    <div className="min-h-[100dvh] bg-black text-white selection:bg-yellow-400/30 font-sans">
       <AuthModal
         isLoginOpen={isLoginOpen}
         isSignUpOpen={isSignUpOpen}
@@ -313,7 +313,7 @@ export default function LandingPage() {
       </header>
 
       {/* ─── HERO ─── */}
-      <section className="relative min-h-screen flex items-center overflow-hidden">
+      <section className="relative min-h-[100dvh] flex items-center overflow-hidden">
         {/* Background */}
         <div className="absolute inset-0 z-0">
           <img src="/hero-bg.png" alt="Barbershop" className="w-full h-full object-cover opacity-30" />

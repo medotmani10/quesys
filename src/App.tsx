@@ -11,7 +11,7 @@ import './App.css';
 function App() {
   return (
     <BrowserRouter>
-      <div dir="rtl" className="min-h-screen bg-background text-foreground">
+      <div dir="rtl" className="min-h-[100dvh] bg-background text-foreground">
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />

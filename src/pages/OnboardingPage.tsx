@@ -339,7 +339,7 @@ export default function OnboardingPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4 relative overflow-hidden flex items-center">
+    <div className="min-h-[100dvh] bg-slate-950 p-4 relative overflow-hidden flex items-center">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
 
       <div className="max-w-xl mx-auto w-full relative z-10 py-10">

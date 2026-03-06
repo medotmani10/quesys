@@ -347,7 +347,7 @@ export default function AdminDashboard() {
 
   /* ─── Loading ─── */
   if (loading) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
+    <div className="min-h-[100dvh] bg-black flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <Loader2 className="w-10 h-10 animate-spin text-yellow-400" />
         <p className="text-zinc-500 text-sm font-semibold">جاري التحميل…</p>
@@ -362,7 +362,7 @@ export default function AdminDashboard() {
 
   /* ─── Render ─── */
   return (
-    <div className="min-h-screen bg-[#0a0a0a]" dir="rtl">
+    <div className="min-h-[100dvh] bg-[#0a0a0a]" dir="rtl">
       {/* shimmer keyframe */}
       <style>{`
         @keyframes shimmer {
@@ -375,7 +375,7 @@ export default function AdminDashboard() {
 
       {/* ─── HEADER ─── */}
       <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl border-b border-zinc-800/80">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div className="w-full max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           {/* Brand */}
           <div className="flex items-center gap-3">
             {shop.logo_url
@@ -441,7 +441,7 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <div className="w-full max-w-7xl mx-auto px-4 py-6 space-y-6">
 
         {/* ─── STATS ─── */}
         <div className="grid grid-cols-3 gap-3">

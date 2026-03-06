@@ -112,14 +112,14 @@ export default function CustomerBookingPage() {
 
   // ─── LOADING ───
   if (loading) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
+    <div className="min-h-[100dvh] bg-black flex items-center justify-center">
       <Loader2 className="w-10 h-10 animate-spin text-yellow-400" />
     </div>
   );
 
   // ─── NOT FOUND ───
   if (!shop) return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+    <div className="min-h-[100dvh] bg-black flex items-center justify-center p-4">
       <div className="text-center max-w-sm w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-10">
         <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
           <AlertCircle className="w-8 h-8 text-red-500" />
@@ -133,7 +133,7 @@ export default function CustomerBookingPage() {
 
   // ─── CLOSED ───
   if (!shop.is_open) return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+    <div className="min-h-[100dvh] bg-black flex items-center justify-center p-4">
       <div className="max-w-sm w-full bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
         <div className="h-2 bg-red-500 w-full" />
         <div className="p-8 text-center">
@@ -152,8 +152,8 @@ export default function CustomerBookingPage() {
 
   // ─── ACTIVE TICKET ───
   if (activeTicket) return (
-    <div className="min-h-screen bg-black p-4">
-      <div className="max-w-md mx-auto pt-6">
+    <div className="min-h-[100dvh] bg-black p-4">
+      <div className="w-full max-w-xl mx-auto pt-6">
         {/* Shop mini-header */}
         <div className="flex items-center gap-3 mb-6 bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
           {shop.logo_url
@@ -220,8 +220,8 @@ export default function CustomerBookingPage() {
 
   // ─── BOOKING FORM ───
   return (
-    <div className="min-h-screen bg-black p-4">
-      <div className="max-w-md mx-auto pt-6 pb-10">
+    <div className="min-h-[100dvh] bg-black p-4 flex flex-col">
+      <div className="w-full max-w-xl mx-auto pt-6 pb-10 flex-1 flex flex-col">
 
         {/* Shop Header */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-5">

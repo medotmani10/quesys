@@ -202,7 +202,7 @@ export default function AdminSettingsPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center">
+            <div className="min-h-[100dvh] bg-slate-950 flex flex-col items-center justify-center">
                 <Loader2 className="w-12 h-12 text-amber-500 animate-spin mb-4" />
                 <p className="text-amber-500/80 font-medium">جاري تحميل الإعدادات...</p>
             </div>
@@ -210,7 +210,7 @@ export default function AdminSettingsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 relative overflow-hidden pb-12">
+        <div className="min-h-[100dvh] bg-slate-950 relative overflow-hidden pb-12">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay pointer-events-none"></div>
 
             {/* Header */}
