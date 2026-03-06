@@ -7,6 +7,7 @@ import CustomerBookingPage from '@/pages/CustomerBookingPage';
 import AdminDashboard from '@/pages/AdminDashboard';
 import ArchivePage from '@/pages/ArchivePage';
 import AdminSettingsPage from '@/pages/AdminSettingsPage';
+import TicketStatusPage from '@/pages/TicketStatusPage';
 
 // Detect if the app is running as an installed PWA (standalone mode)
 const isPWA = window.matchMedia('(display-mode: standalone)').matches
@@ -28,6 +29,9 @@ function App() {
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/archive" element={<ArchivePage />} />
           <Route path="/admin/settings" element={<AdminSettingsPage />} />
+
+          {/* Ticket status page — QR code direct link, no auth needed, web+PWA */}
+          <Route path="/t/:ticketId" element={<TicketStatusPage />} />
 
           {/* Customer booking page:
               - In PWA → go to admin (customers use browser link, not the installed app)

@@ -2,6 +2,7 @@ import { QRCodeSVG } from 'qrcode.react';
 
 interface ThermalTicketProps {
     ticketNumber: number;
+    ticketId: string;
     customerName: string;
     barberName?: string;
     shopName: string;
@@ -12,14 +13,14 @@ interface ThermalTicketProps {
 
 export function ThermalTicket({
     ticketNumber,
+    ticketId,
     customerName,
     barberName,
     shopName,
-    shopSlug,
     peopleCount,
     createdAt,
 }: ThermalTicketProps) {
-    const trackingUrl = `${window.location.origin}/${shopSlug}`;
+    const trackingUrl = `${window.location.origin}/t/${ticketId}`;
 
     const timeStr = createdAt.toLocaleTimeString('ar-DZ', {
         hour: '2-digit',
@@ -103,7 +104,7 @@ export function ThermalTicket({
             {/* QR Code */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2mm' }}>
                 <div style={{ fontSize: '8pt', fontWeight: '700', color: '#555' }}>
-                    امسح الكود لتتابع دورك مباشرة
+                    امسح الكود لتتابع دورك مباشرة 📱
                 </div>
                 <QRCodeSVG
                     value={trackingUrl}

@@ -292,17 +292,18 @@ export default function AdminDashboard() {
     const ticketNumber = ticketNumberData as number;
     const barberName = barbers.find(b => b.id === manualBarber)?.name;
     const ticketCode = getTicketCode(barberName, ticketNumber);
-    const { error } = await supabase.from('tickets').insert({
+    const { data: insertedTicket, error } = await supabase.from('tickets').insert({
       shop_id: shop.id, barber_id: manualBarber,
       customer_name: manualName.trim(), phone_number: manualPhone.trim(),
       people_count: manualPeople, ticket_number: ticketNumber,
       user_session_id: `manual_${Date.now()}`, status: 'waiting',
-    });
+    }).select().single();
     if (error) { toast.error('فشل في إنشاء التذكرة'); return; }
     toast.success(`تم إنشاء التذكرة ${ticketCode}`);
     if (autoPrint) {
       printThermalTicket({
         ticketNumber,
+        ticketId: insertedTicket.id,
         customerName: manualName.trim(),
         barberName,
         shopName: shop.name,
