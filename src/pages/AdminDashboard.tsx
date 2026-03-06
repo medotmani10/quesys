@@ -9,9 +9,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, LogOut, Archive, Users, Scissors, ChevronLeft, X, Loader2, CheckCircle, Settings, Copy, TrendingUp, Printer } from 'lucide-react';
+import { Plus, LogOut, Archive, Users, Scissors, ChevronLeft, X, Loader2, CheckCircle, Settings, Copy, TrendingUp, Printer, Bell, BellOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { printThermalTicket } from '@/components/ThermalTicket';
+import { playTicketSound } from '@/lib/notificationSound';
 
 /* ─── helpers ─── */
 function cn(...classes: (string | undefined | false)[]) {
@@ -212,6 +213,14 @@ export default function AdminDashboard() {
   const [manualPeople, setManualPeople] = useState(1);
   const [manualBarber, setManualBarber] = useState('any');
   const [autoPrint, setAutoPrint] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // initialise audio context on first user interaction — improves autoplay policy
+  const unlockAudio = () => { if (soundEnabled) playTicketSound(); };
+  useEffect(() => {
+    window.addEventListener('pointerdown', unlockAudio, { once: true });
+    return () => window.removeEventListener('pointerdown', unlockAudio);
+  }, []);
 
   useEffect(() => { checkAuth(); }, []);
   useEffect(() => { if (shop) { subscribeToUpdates(); loadTickets(); } }, [shop?.id]);
@@ -242,7 +251,23 @@ export default function AdminDashboard() {
   const subscribeToUpdates = () => {
     if (!shop) return;
     const sub = supabase.channel(`admin_shop_${shop.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` }, () => loadTickets())
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` },
+        (payload) => {
+          // Only chime for customer-created tickets (not manual ones from admin)
+          const isManual = (payload.new as any)?.user_session_id?.startsWith('manual_');
+          if (!isManual && soundEnabled) playTicketSound();
+          loadTickets();
+        }
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` },
+        () => loadTickets()
+      )
+      .on('postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` },
+        () => loadTickets()
+      )
       .subscribe();
     return () => { sub.unsubscribe(); };
   };
@@ -384,6 +409,20 @@ export default function AdminDashboard() {
               {shop.is_open ? 'مفتوح' : 'مغلق'}
               <Switch checked={shop.is_open} onCheckedChange={() => { }} onClick={(e) => e.stopPropagation()}
                 className="data-[state=checked]:bg-green-500 scale-75 pointer-events-none" />
+            </button>
+
+            {/* Sound toggle */}
+            <button
+              onClick={() => setSoundEnabled(v => !v)}
+              title={soundEnabled ? 'كتم الصوت' : 'تفعيل الصوت'}
+              className={cn(
+                'w-9 h-9 rounded-xl flex items-center justify-center border transition-all',
+                soundEnabled
+                  ? 'border-yellow-400/40 text-yellow-400 bg-yellow-400/10 hover:bg-yellow-400/20'
+                  : 'border-zinc-800 text-zinc-600 bg-zinc-950 hover:border-zinc-600'
+              )}
+            >
+              {soundEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
             </button>
 
             <button onClick={() => navigate('/admin/settings')}
