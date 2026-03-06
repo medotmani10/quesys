@@ -5,9 +5,14 @@ import type { Shop, Barber, Ticket } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MapPin, User, Phone, Users, Scissors, AlertCircle, Loader2, X } from 'lucide-react';
+import { MapPin, User, Phone, Users, Scissors, AlertCircle, Loader2, X, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+
+/** Returns the per-barber display code, e.g. "A001" for Ahmed, ticket 1 */
+export function getTicketCode(barberName: string | null | undefined, ticketNumber: number): string {
+  const prefix = barberName ? barberName.trim()[0].toUpperCase() : '#';
+  return `${prefix}${String(ticketNumber).padStart(3, '0')}`;
+}
 
 export default function CustomerBookingPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -15,6 +20,7 @@ export default function CustomerBookingPage() {
 
   const [shop, setShop] = useState<Shop | null>(null);
   const [barbers, setBarbers] = useState<Barber[]>([]);
+  const [barberQueueCounts, setBarberQueueCounts] = useState<Record<string, number>>({});
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
   const [peopleAhead, setPeopleAhead] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -23,7 +29,7 @@ export default function CustomerBookingPage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [peopleCount, setPeopleCount] = useState(1);
-  const [selectedBarber, setSelectedBarber] = useState<string>('any');
+  const [selectedBarber, setSelectedBarber] = useState<string>(''); // '' = none selected (required)
 
   useEffect(() => { if (slug) loadShopData(); }, [slug]);
   useEffect(() => { if (activeTicket) subscribeToTicketUpdates(); }, [activeTicket?.id]);
@@ -34,8 +40,20 @@ export default function CustomerBookingPage() {
       const { data: shopData, error: shopError } = await supabase.from('shops').select('*').eq('slug', slug).single();
       if (shopError || !shopData) { toast.error('الصالون غير موجود'); navigate('/'); return; }
       setShop(shopData as Shop);
-      const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', shopData.id).eq('is_active', true);
-      setBarbers((barbersData as Barber[]) || []);
+
+      const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', shopData.id).eq('is_active', true).order('name');
+      const bList = (barbersData as Barber[]) || [];
+      setBarbers(bList);
+
+      // Load queue counts per barber for the visual buttons
+      const { data: waitingTickets } = await supabase.from('tickets').select('barber_id').eq('shop_id', shopData.id).eq('status', 'waiting');
+      const counts: Record<string, number> = {};
+      bList.forEach(b => { counts[b.id] = 0; });
+      (waitingTickets || []).forEach((t: any) => {
+        if (t.barber_id && counts[t.barber_id] !== undefined) counts[t.barber_id]++;
+      });
+      setBarberQueueCounts(counts);
+
       const sessionId = getOrCreateSessionId();
       const { data: ticketsData } = await supabase.from('tickets').select('*').eq('shop_id', shopData.id).eq('user_session_id', sessionId).in('status', ['waiting', 'serving']).order('created_at', { ascending: false }).limit(1);
       if (ticketsData && ticketsData.length > 0) {
@@ -71,6 +89,7 @@ export default function CustomerBookingPage() {
     e.preventDefault();
     if (!shop) return;
     if (!name.trim() || !phone.trim()) { toast.error('يرجى ملء جميع الحقول'); return; }
+    if (!selectedBarber) { toast.error('يرجى اختيار الحلاق أولاً'); return; }
     setSubmitting(true);
     try {
       const sessionId = getOrCreateSessionId();
@@ -78,7 +97,7 @@ export default function CustomerBookingPage() {
       if (ticketNumError) { toast.error('فشل في إنشاء التذكرة'); setSubmitting(false); return; }
       const { data: ticket, error } = await supabase.from('tickets').insert({
         shop_id: shop.id,
-        barber_id: selectedBarber === 'any' ? null : selectedBarber,
+        barber_id: selectedBarber,
         customer_name: name.trim(),
         phone_number: phone.trim(),
         people_count: peopleCount,
@@ -105,10 +124,7 @@ export default function CustomerBookingPage() {
     } catch { toast.error('فشل إلغاء التذكرة'); }
   };
 
-  const getBarberName = (barberId: string | null) => {
-    if (!barberId) return 'أي حلاق متاح';
-    return barbers.find(b => b.id === barberId)?.name || 'غير معروف';
-  };
+  const getBarberById = (barberId: string | null) => barbers.find(b => b.id === barberId) || null;
 
   // ─── LOADING ───
   if (loading) return (
@@ -151,72 +167,83 @@ export default function CustomerBookingPage() {
   );
 
   // ─── ACTIVE TICKET ───
-  if (activeTicket) return (
-    <div className="min-h-[100dvh] bg-black p-4">
-      <div className="w-full max-w-xl mx-auto pt-6">
-        {/* Shop mini-header */}
-        <div className="flex items-center gap-3 mb-6 bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
-          {shop.logo_url
-            ? <img src={shop.logo_url} alt={shop.name} className="w-12 h-12 object-contain rounded-xl border border-zinc-700" />
-            : <div className="w-12 h-12 bg-yellow-400 rounded-xl flex items-center justify-center shrink-0"><Scissors className="w-6 h-6 text-black" /></div>
-          }
-          <div>
-            <h2 className="font-black text-white text-lg leading-tight">{shop.name}</h2>
-            <p className="text-xs text-zinc-500">نظام الانتظار الرقمي</p>
+  if (activeTicket) {
+    const activeBarber = getBarberById(activeTicket.barber_id);
+    const ticketCode = getTicketCode(activeBarber?.name, activeTicket.ticket_number);
+    return (
+      <div className="min-h-[100dvh] bg-black p-4">
+        <div className="w-full max-w-xl mx-auto pt-6">
+          {/* Shop mini-header */}
+          <div className="flex items-center gap-3 mb-6 bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+            {shop.logo_url
+              ? <img src={shop.logo_url} alt={shop.name} className="w-12 h-12 object-contain rounded-xl border border-zinc-700" />
+              : <div className="w-12 h-12 bg-yellow-400 rounded-xl flex items-center justify-center shrink-0"><Scissors className="w-6 h-6 text-black" /></div>
+            }
+            <div>
+              <h2 className="font-black text-white text-lg leading-tight">{shop.name}</h2>
+              <p className="text-xs text-zinc-500">نظام الانتظار الرقمي</p>
+            </div>
           </div>
-        </div>
 
-        {/* Ticket Card */}
-        <div className={`rounded-2xl border-2 overflow-hidden mb-6 ${activeTicket.status === 'serving' ? 'border-green-500' : 'border-yellow-400'}`}>
-          <div className={`h-2 w-full ${activeTicket.status === 'serving' ? 'bg-green-500' : 'bg-yellow-400'}`} />
-          <div className="bg-zinc-900 p-8 text-center">
-            <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-2">رقم التذكرة</p>
-            <div className={`text-8xl font-black mb-6 ${activeTicket.status === 'serving' ? 'text-green-400' : 'text-yellow-400'}`}>
-              {activeTicket.ticket_number}
-            </div>
-
-            <div className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-black mb-8 ${activeTicket.status === 'serving' ? 'bg-green-500/10 text-green-400 border border-green-500/30' : 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/30'}`}>
-              <div className={`w-2 h-2 rounded-full animate-pulse ${activeTicket.status === 'serving' ? 'bg-green-400' : 'bg-yellow-400'}`} />
-              {activeTicket.status === 'serving' ? 'دورك الآن! تفضل للحلاق' : 'في قائمة الانتظار'}
-            </div>
-
-            {activeTicket.status === 'waiting' && (
-              <div className="bg-black border border-zinc-800 rounded-xl p-6 mb-8">
-                <p className="text-zinc-500 text-xs font-bold mb-2">أشخاص قبلك</p>
-                <p className="text-6xl font-black text-white">{peopleAhead}</p>
+          {/* Ticket Card */}
+          <div className={`rounded-2xl border-2 overflow-hidden mb-6 ${activeTicket.status === 'serving' ? 'border-green-500' : 'border-yellow-400'}`}>
+            <div className={`h-2 w-full ${activeTicket.status === 'serving' ? 'bg-green-500' : 'bg-yellow-400'}`} />
+            <div className="bg-zinc-900 p-8 text-center">
+              <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-2">رقم تذكرتك</p>
+              <div className={`text-7xl font-black mb-3 tracking-tighter ${activeTicket.status === 'serving' ? 'text-green-400' : 'text-yellow-400'}`}>
+                {ticketCode}
               </div>
-            )}
 
-            <div className="space-y-3 text-sm text-right bg-black/50 border border-zinc-800 rounded-xl p-5 mb-8">
-              {[
-                { icon: <User className="w-4 h-4 text-yellow-400" />, label: 'الاسم', value: activeTicket.customer_name },
-                { icon: <Scissors className="w-4 h-4 text-yellow-400" />, label: 'الحلاق', value: getBarberName(activeTicket.barber_id) },
-                { icon: <Users className="w-4 h-4 text-yellow-400" />, label: 'العدد', value: `${activeTicket.people_count} ${activeTicket.people_count === 1 ? 'شخص' : 'أشخاص'}` },
-              ].map((row, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 font-black text-white">{row.icon}{row.value}</div>
-                  <span className="text-zinc-600 text-xs">{row.label}</span>
+              {activeBarber && (
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-zinc-800 rounded-full mb-5">
+                  <Scissors className="w-3.5 h-3.5 text-yellow-400" />
+                  <span className="text-zinc-300 text-sm font-bold">{activeBarber.name}</span>
                 </div>
-              ))}
+              )}
+
+              <div className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-black mb-8 ${activeTicket.status === 'serving' ? 'bg-green-500/10 text-green-400 border border-green-500/30' : 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/30'}`}>
+                <div className={`w-2 h-2 rounded-full animate-pulse ${activeTicket.status === 'serving' ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                {activeTicket.status === 'serving' ? 'دورك الآن! تفضل للحلاق' : 'في قائمة الانتظار'}
+              </div>
+
+              {activeTicket.status === 'waiting' && (
+                <div className="bg-black border border-zinc-800 rounded-xl p-6 mb-8">
+                  <p className="text-zinc-500 text-xs font-bold mb-2">أشخاص قبلك عند هذا الحلاق</p>
+                  <p className="text-6xl font-black text-white">{peopleAhead}</p>
+                </div>
+              )}
+
+              <div className="space-y-3 text-sm text-right bg-black/50 border border-zinc-800 rounded-xl p-5 mb-8">
+                {[
+                  { icon: <User className="w-4 h-4 text-yellow-400" />, label: 'الاسم', value: activeTicket.customer_name },
+                  { icon: <Scissors className="w-4 h-4 text-yellow-400" />, label: 'الحلاق', value: activeBarber?.name || 'غير محدد' },
+                  { icon: <Users className="w-4 h-4 text-yellow-400" />, label: 'العدد', value: `${activeTicket.people_count} ${activeTicket.people_count === 1 ? 'شخص' : 'أشخاص'}` },
+                ].map((row, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-black text-white">{row.icon}{row.value}</div>
+                    <span className="text-zinc-600 text-xs">{row.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Live + Cancel */}
-        <div className="flex items-center justify-center gap-2 text-xs font-bold text-green-400 bg-green-500/5 border border-green-500/20 rounded-xl py-3 mb-4">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          النظام متصل ويتحدث تلقائياً
-        </div>
+          {/* Live + Cancel */}
+          <div className="flex items-center justify-center gap-2 text-xs font-bold text-green-400 bg-green-500/5 border border-green-500/20 rounded-xl py-3 mb-4">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            النظام متصل ويتحدث تلقائياً
+          </div>
 
-        {activeTicket.status === 'waiting' && (
-          <Button onClick={handleCancelTicket} variant="outline"
-            className="w-full rounded-xl h-12 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 font-bold">
-            <X className="w-4 h-4 mr-2" /> إلغاء الحجز
-          </Button>
-        )}
+          {activeTicket.status === 'waiting' && (
+            <Button onClick={handleCancelTicket} variant="outline"
+              className="w-full rounded-xl h-12 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 font-bold">
+              <X className="w-4 h-4 mr-2" /> إلغاء الحجز
+            </Button>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   // ─── BOOKING FORM ───
   return (
@@ -257,6 +284,51 @@ export default function CustomerBookingPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            {/* Barber selection — REQUIRED, shown FIRST */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2 text-zinc-300 text-sm font-bold">
+                <Scissors className="w-4 h-4 text-yellow-400" />
+                اختر الحلاق
+                <span className="text-red-400 text-xs font-black">*</span>
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {barbers.map((barber) => {
+                  const isSelected = selectedBarber === barber.id;
+                  const queueCount = barberQueueCounts[barber.id] ?? 0;
+                  return (
+                    <button
+                      key={barber.id}
+                      type="button"
+                      onClick={() => setSelectedBarber(barber.id)}
+                      className={`relative flex items-center gap-4 p-4 rounded-xl border-2 text-right transition-all duration-200 ${isSelected
+                          ? 'bg-yellow-400/10 border-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.15)]'
+                          : 'bg-black border-zinc-800 hover:border-zinc-600'
+                        }`}
+                    >
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 font-black text-xl transition-all ${isSelected ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-400'
+                        }`}>
+                        {barber.name[0].toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-black text-base leading-tight truncate ${isSelected ? 'text-yellow-400' : 'text-white'}`}>
+                          {barber.name}
+                        </p>
+                        <p className={`text-xs mt-0.5 font-bold ${queueCount === 0 ? 'text-green-400' : 'text-zinc-500'}`}>
+                          {queueCount === 0 ? 'لا انتظار ✓' : `${queueCount} بالانتظار`}
+                        </p>
+                      </div>
+                      {isSelected && (
+                        <CheckCircle className="w-5 h-5 text-yellow-400 shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {barbers.length === 0 && (
+                <p className="text-zinc-500 text-sm text-center py-4">لا يوجد حلاقون نشطون حالياً</p>
+              )}
+            </div>
+
             {/* Name */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2 text-zinc-300 text-sm font-bold">
@@ -293,28 +365,17 @@ export default function CustomerBookingPage() {
               </div>
             </div>
 
-            {/* Barber select */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2 text-zinc-300 text-sm font-bold">
-                <Scissors className="w-4 h-4 text-yellow-400" /> اختر الحلاق (اختياري)
-              </Label>
-              <Select value={selectedBarber} onValueChange={setSelectedBarber}>
-                <SelectTrigger className="rounded-xl h-12 bg-black border-zinc-700 text-white focus:ring-yellow-400">
-                  <SelectValue placeholder="أي حلاق متاح" />
-                </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-700 text-white rounded-xl">
-                  <SelectItem value="any" className="focus:bg-yellow-400/10 focus:text-yellow-400 cursor-pointer">أي حلاق متاح</SelectItem>
-                  {barbers.map((barber) => (
-                    <SelectItem key={barber.id} value={barber.id} className="focus:bg-yellow-400/10 focus:text-yellow-400 cursor-pointer">{barber.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Submit */}
-            <Button type="submit" className="w-full rounded-xl h-14 bg-yellow-400 hover:bg-yellow-300 text-black font-black text-lg mt-2 transition-all hover:scale-[1.02]" disabled={submitting}>
+            <Button type="submit"
+              className="w-full rounded-xl h-14 bg-yellow-400 hover:bg-yellow-300 text-black font-black text-lg mt-2 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:scale-100"
+              disabled={submitting || !selectedBarber}>
               {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'تأكيد الحجز ✂️'}
             </Button>
+            {!selectedBarber && (
+              <p className="text-center text-red-400/70 text-xs font-bold animate-pulse">
+                اختر الحلاق أولاً لتفعيل زر الحجز
+              </p>
+            )}
           </form>
         </div>
       </div>

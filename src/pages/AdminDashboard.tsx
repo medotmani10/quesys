@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, LogOut, Archive, Users, Scissors, ChevronLeft, X, Loader2, CheckCircle, Settings, Copy, TrendingUp, Printer, Bell, BellOff } from 'lucide-react';
+import { Plus, LogOut, Archive, Users, Scissors, ChevronLeft, X, Loader2, CheckCircle, Settings, Copy, TrendingUp, Printer, Bell, BellOff, List } from 'lucide-react';
 import { toast } from 'sonner';
 import { printThermalTicket } from '@/components/ThermalTicket';
 import { playTicketSound } from '@/lib/notificationSound';
+import { getTicketCode } from '@/pages/CustomerBookingPage';
 
 /* ─── helpers ─── */
 function cn(...classes: (string | undefined | false)[]) {
@@ -50,8 +51,9 @@ function StatCard({ label, value, color, sub }: { label: string; value: number; 
 }
 
 /* ─── TicketRow ─── */
-function TicketRow({ ticket, onCancel }: { ticket: Ticket; onCancel: () => void }) {
+function TicketRow({ ticket, barberName, onCancel }: { ticket: Ticket; barberName?: string; onCancel: () => void }) {
   const [pressing, setPressing] = useState(false);
+  const code = getTicketCode(barberName, ticket.ticket_number);
   return (
     <div
       className={cn(
@@ -64,8 +66,8 @@ function TicketRow({ ticket, onCancel }: { ticket: Ticket; onCancel: () => void 
       onMouseLeave={() => setPressing(false)}
     >
       <div className="flex items-center gap-3">
-        <span className="w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-black text-zinc-400 group-hover/row:border-yellow-400/30 group-hover/row:text-yellow-400 transition-colors">
-          {ticket.ticket_number}
+        <span className="min-w-[2.5rem] h-8 px-1 flex items-center justify-center rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-black text-zinc-400 group-hover/row:border-yellow-400/30 group-hover/row:text-yellow-400 transition-colors">
+          {code}
         </span>
         <div>
           <p className="text-sm font-bold text-white leading-tight group-hover/row:text-yellow-400 transition-colors">{ticket.customer_name}</p>
@@ -83,7 +85,8 @@ function TicketRow({ ticket, onCancel }: { ticket: Ticket; onCancel: () => void 
 }
 
 /* ─── ServingBadge ─── */
-function ServingBadge({ ticket, onFinish }: { ticket: Ticket; onFinish: () => void }) {
+function ServingBadge({ ticket, barberName, onFinish }: { ticket: Ticket; barberName?: string; onFinish: () => void }) {
+  const code = getTicketCode(barberName, ticket.ticket_number);
   return (
     <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4 overflow-hidden relative">
       {/* shimmer */}
@@ -96,7 +99,7 @@ function ServingBadge({ ticket, onFinish }: { ticket: Ticket; onFinish: () => vo
           </span>
           <span className="text-xs font-bold text-green-400 uppercase tracking-wider">قيد الخدمة</span>
         </div>
-        <span className="text-3xl font-black text-white">#{ticket.ticket_number}</span>
+        <span className="text-3xl font-black text-white">{code}</span>
       </div>
       <p className="text-sm text-zinc-300 font-semibold mb-3 relative z-10">{ticket.customer_name}</p>
       <Button
@@ -133,10 +136,10 @@ function BarberCard({
       {/* Card header */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-zinc-800/80">
         <div className={cn(
-          'w-10 h-10 rounded-xl flex items-center justify-center transition-colors',
+          'w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg transition-colors',
           serving ? 'bg-green-500/15 text-green-400' : 'bg-yellow-400/10 text-yellow-400'
         )}>
-          <Scissors className="w-5 h-5" />
+          {barber.name[0].toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-black text-white text-base leading-tight truncate">{barber.name}</h3>
@@ -153,7 +156,7 @@ function BarberCard({
 
       {/* Body */}
       <div className="p-4 flex-1 flex flex-col gap-3">
-        {serving && <ServingBadge ticket={serving} onFinish={() => onFinish(serving.id)} />}
+        {serving && <ServingBadge ticket={serving} barberName={barber.name} onFinish={() => onFinish(serving.id)} />}
 
         {/* Next button */}
         <button
@@ -181,7 +184,7 @@ function BarberCard({
         {waiting.length > 0 && (
           <div className="space-y-2 max-h-40 overflow-y-auto scrollbar-hide mt-1">
             {waiting.map((t) => (
-              <TicketRow key={t.id} ticket={t} onCancel={() => onCancel(t.id)} />
+              <TicketRow key={t.id} ticket={t} barberName={barber.name} onCancel={() => onCancel(t.id)} />
             ))}
           </div>
         )}
@@ -212,7 +215,7 @@ export default function AdminDashboard() {
   const [manualName, setManualName] = useState('');
   const [manualPhone, setManualPhone] = useState('');
   const [manualPeople, setManualPeople] = useState(1);
-  const [manualBarber, setManualBarber] = useState('any');
+  const [manualBarber, setManualBarber] = useState('');
   const [autoPrint, setAutoPrint] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
@@ -283,18 +286,20 @@ export default function AdminDashboard() {
   const handleManualTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shop) return;
+    if (!manualBarber) { toast.error('يرجى اختيار الحلاق'); return; }
     const { data: ticketNumberData, error: tErr } = await supabase.rpc('get_next_ticket_number', { p_shop_id: shop.id });
     if (tErr) { toast.error('فشل في إنشاء التذكرة'); return; }
     const ticketNumber = ticketNumberData as number;
-    const barberName = manualBarber !== 'any' ? barbers.find(b => b.id === manualBarber)?.name : undefined;
+    const barberName = barbers.find(b => b.id === manualBarber)?.name;
+    const ticketCode = getTicketCode(barberName, ticketNumber);
     const { error } = await supabase.from('tickets').insert({
-      shop_id: shop.id, barber_id: manualBarber === 'any' ? null : manualBarber,
+      shop_id: shop.id, barber_id: manualBarber,
       customer_name: manualName.trim(), phone_number: manualPhone.trim(),
       people_count: manualPeople, ticket_number: ticketNumber,
       user_session_id: `manual_${Date.now()}`, status: 'waiting',
     });
     if (error) { toast.error('فشل في إنشاء التذكرة'); return; }
-    toast.success(`تم إنشاء التذكرة #${ticketNumber}`);
+    toast.success(`تم إنشاء التذكرة ${ticketCode}`);
     if (autoPrint) {
       printThermalTicket({
         ticketNumber,
@@ -310,7 +315,7 @@ export default function AdminDashboard() {
     setManualName('');
     setManualPhone('');
     setManualPeople(1);
-    setManualBarber('any');
+    setManualBarber('');
   };
 
   const handleNextCustomer = async (barberId: string) => {
@@ -552,13 +557,14 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-zinc-300 text-sm font-bold">الحلاق</Label>
+                <Label className="text-zinc-300 text-sm font-bold flex items-center gap-1">
+                  الحلاق <span className="text-red-400">*</span>
+                </Label>
                 <Select value={manualBarber} onValueChange={setManualBarber}>
                   <SelectTrigger className="rounded-xl h-12 bg-black border-zinc-700 text-white focus:ring-yellow-400">
-                    <SelectValue placeholder="أي حلاق" />
+                    <SelectValue placeholder="اختر الحلاق..." />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-900 border-zinc-700 text-white rounded-xl">
-                    <SelectItem value="any" className="focus:bg-yellow-400/10 focus:text-yellow-400 cursor-pointer">أي حلاق متاح</SelectItem>
                     {barbers.map((b) => (
                       <SelectItem key={b.id} value={b.id} className="focus:bg-yellow-400/10 focus:text-yellow-400 cursor-pointer">{b.name}</SelectItem>
                     ))}
@@ -616,6 +622,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="all" className="flex-1 min-w-fit rounded-lg font-black text-sm text-zinc-500 data-[state=active]:bg-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_2px_8px_rgba(250,204,21,0.4)] transition-all">
               الكل
             </TabsTrigger>
+            <TabsTrigger value="tickets_overview" className="flex-1 min-w-fit rounded-lg font-black text-sm text-zinc-500 data-[state=active]:bg-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_2px_8px_rgba(250,204,21,0.4)] transition-all flex items-center gap-1">
+              <List className="w-3.5 h-3.5" />
+              التذاكر
+            </TabsTrigger>
             {barbers.map((barber) => (
               <TabsTrigger key={barber.id} value={barber.id}
                 className="flex-1 min-w-fit rounded-lg font-black text-sm text-zinc-500 data-[state=active]:bg-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_2px_8px_rgba(250,204,21,0.4)] transition-all">
@@ -672,6 +682,74 @@ export default function AdminDashboard() {
             </div>
           </TabsContent>
 
+          {/* ─── ALL TICKETS OVERVIEW tab ─── */}
+          <TabsContent value="tickets_overview" className="mt-0 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
+            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
+                <h3 className="font-black text-white text-base flex items-center gap-2">
+                  <List className="w-5 h-5 text-yellow-400" />
+                  جميع التذاكر النشطة
+                </h3>
+                <span className="bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-xs font-black px-2.5 py-1 rounded-full">
+                  {tickets.filter(t => t.status === 'waiting' || t.status === 'serving').length}
+                </span>
+              </div>
+              <div className="divide-y divide-zinc-800/60">
+                {tickets.filter(t => t.status === 'waiting' || t.status === 'serving').length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-14 opacity-30">
+                    <Users className="w-12 h-12 text-zinc-600 mb-3" />
+                    <p className="text-zinc-400 text-sm">لا توجد تذاكر نشطة</p>
+                  </div>
+                )}
+                {tickets
+                  .filter(t => t.status === 'waiting' || t.status === 'serving')
+                  .map((t) => {
+                    const barber = barbers.find(b => b.id === t.barber_id);
+                    const code = getTicketCode(barber?.name, t.ticket_number);
+                    return (
+                      <div key={t.id} className="flex items-center gap-4 px-5 py-4 hover:bg-zinc-900/50 transition-colors group">
+                        <div className={cn(
+                          'w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm shrink-0 border',
+                          t.status === 'serving'
+                            ? 'bg-green-500/10 text-green-400 border-green-500/30'
+                            : 'bg-zinc-900 text-yellow-400 border-zinc-800',
+                        )}>
+                          {code}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-black text-white text-sm leading-tight group-hover:text-yellow-400 transition-colors truncate">{t.customer_name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {barber && (
+                              <span className="text-xs text-zinc-500 font-semibold flex items-center gap-1">
+                                <Scissors className="w-3 h-3" />{barber.name}
+                              </span>
+                            )}
+                            {t.people_count > 1 && (
+                              <span className="text-xs text-zinc-600">· {t.people_count} أشخاص</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={cn(
+                            'text-xs font-black px-2.5 py-1 rounded-full border',
+                            t.status === 'serving'
+                              ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                              : 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20',
+                          )}>
+                            {t.status === 'serving' ? 'يُخدم' : 'انتظار'}
+                          </span>
+                          <button onClick={() => cancelTicket(t.id)}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          </TabsContent>
+
           {/* ─── Per-barber tabs ─── */}
           {barbers.map((barber) => {
             const serving = getCurrentServing(barber.id);
@@ -719,7 +797,7 @@ export default function AdminDashboard() {
                     {/* Waiting list */}
                     <div className="flex items-center justify-between pt-2">
                       <h4 className="font-black text-white text-lg flex items-center gap-2">
-                        <Users className="w-5 h-5 text-yellow-400" /> قائمة الانتظار
+                        <Users className="w-5 h-5 text-yellow-400" /> قائمة الانتظار — {barber.name}
                       </h4>
                       <span className="bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-xs font-black px-3 py-1 rounded-full">
                         {waiting.length} عميل
