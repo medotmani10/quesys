@@ -75,7 +75,7 @@ function AuthModal({
               <div className="w-8 h-8 bg-yellow-400 rounded-lg flex items-center justify-center">
                 <Scissors className="w-4 h-4 text-black" />
               </div>
-              <span className="font-black text-white text-base">Barber<span className="text-yellow-400">Queue</span></span>
+              <span className="font-black text-white text-base">Barber<span className="text-yellow-400">Ticket</span></span>
             </div>
             <h2 className="text-2xl font-black text-white mt-3">
               {isLogin ? 'مرحباً بعودتك ✂️' : 'دشن صالونك الآن'}
@@ -165,6 +165,7 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSignUpOpen, setIsSignUpOpen] = useState(false);
+  const [isSplashOpen, setIsSplashOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -190,6 +191,16 @@ export default function LandingPage() {
       observer.disconnect();
     };
   }, []);
+
+  const handleAppDownload = () => {
+    // Show splash screen
+    setIsSplashOpen(true);
+    // After 2.5 seconds, hide splash screen and open SignUp / Login
+    setTimeout(() => {
+      setIsSplashOpen(false);
+      setIsSignUpOpen(true);
+    }, 2500);
+  };
 
   const checkUser = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -267,6 +278,27 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-[100dvh] bg-black text-white selection:bg-yellow-400/30 font-sans">
+      {/* ─── SPLASH SCREEN ─── */}
+      {isSplashOpen && (
+        <div className="fixed inset-0 z-[200] bg-zinc-950 flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="flex flex-col items-center animate-pulse duration-1000">
+            <img src="/pwa-icon.svg" alt="Barber Ticket Logo" className="w-32 h-32 mb-6 drop-shadow-[0_0_30px_rgba(250,204,21,0.3)]" />
+            <h1 className="text-4xl font-black text-white tracking-tight">Barber <span className="text-yellow-400">Ticket</span></h1>
+          </div>
+          <div className="mt-12 w-64 h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+            <div className="h-full bg-yellow-400 rounded-full animate-[progress_2.5s_ease-out_forwards]" />
+          </div>
+          <p className="text-zinc-500 mt-4 text-sm font-medium animate-pulse">جاري تحميل التطبيق...</p>
+          <style>{`
+            @keyframes progress {
+              0% { width: 0% }
+              20% { width: 30% }
+              60% { width: 70% }
+              100% { width: 100% }
+            }
+          `}</style>
+        </div>
+      )}
       <AuthModal
         isLoginOpen={isLoginOpen}
         isSignUpOpen={isSignUpOpen}
@@ -288,7 +320,7 @@ export default function LandingPage() {
             <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center">
               <Scissors className="w-5 h-5 text-black" />
             </div>
-            <span className="font-black text-xl tracking-tight text-white">Barber<span className="text-yellow-400">Queue</span></span>
+            <span className="font-black text-xl tracking-tight text-white">Barber<span className="text-yellow-400">Ticket</span></span>
           </div>
 
           {user ? (
@@ -352,7 +384,7 @@ export default function LandingPage() {
             {/* Badge */}
             <div className="inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full px-4 py-2 text-yellow-400 text-sm font-bold">
               <Scissors className="w-4 h-4" />
-              BarberQueue — الحل الرقمي لصالونات الحلاقة
+              Barber Ticket — الحل الرقمي لصالونات الحلاقة
             </div>
 
             <h1 className="text-5xl md:text-7xl font-black leading-[1] tracking-tight">
@@ -381,9 +413,9 @@ export default function LandingPage() {
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <Button size="lg"
-                onClick={() => { setIsLoginOpen(false); setIsSignUpOpen(true); }}
+                onClick={handleAppDownload}
                 className="rounded-xl h-14 px-8 bg-yellow-400 hover:bg-yellow-300 text-black font-black text-lg transition-all hover:scale-105">
-                ابدأ مجاناً الآن
+                تحميل التطبيق
                 <ChevronLeft className="w-5 h-5 mr-1" />
               </Button>
 
@@ -480,9 +512,9 @@ export default function LandingPage() {
           </p>
 
           <Button size="lg"
-            onClick={() => { setIsLoginOpen(false); setIsSignUpOpen(true); }}
-            className="rounded-xl h-16 px-12 text-xl bg-black text-yellow-400 font-black hover:bg-zinc-900 transition-all hover:scale-105 border-2 border-black">
-            ابدأ الآن — مجاناً 100%
+            onClick={handleAppDownload}
+            className="rounded-xl h-16 px-12 text-xl bg-yellow-400 text-black font-black hover:bg-yellow-300 transition-all hover:scale-105 border-none shadow-[0_0_40px_rgba(250,204,21,0.2)]">
+            تحميل التطبيق
             <ChevronLeft className="w-5 h-5 mr-2" />
           </Button>
         </div>
@@ -495,9 +527,9 @@ export default function LandingPage() {
             <div className="w-7 h-7 bg-yellow-400 rounded-lg flex items-center justify-center">
               <Scissors className="w-4 h-4 text-black" />
             </div>
-            <span className="font-black text-white text-lg">BarberQueue</span>
+            <span className="font-black text-white text-lg">Barber Ticket</span>
           </div>
-          <p className="text-sm">© 2024 BarberQueue. جميع الحقوق محفوظة.</p>
+          <p className="text-sm">© 2024 Barber Ticket. جميع الحقوق محفوظة.</p>
         </div>
       </footer>
     </div>
