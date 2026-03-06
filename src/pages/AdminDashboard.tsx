@@ -375,7 +375,7 @@ export default function AdminDashboard() {
 
       {/* ─── HEADER ─── */}
       <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl border-b border-zinc-800/80">
-        <div className="w-full px-4 md:px-8 lg:px-12 py-3 flex items-center justify-between gap-3">
+        <div className="w-full max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
           {/* Brand */}
           <div className="flex items-center gap-3">
             {shop.logo_url
@@ -441,7 +441,7 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <div className="w-full px-4 md:px-8 lg:px-12 py-6 space-y-6">
+      <div className="w-full max-w-7xl mx-auto px-4 py-6 space-y-6">
 
         {/* ─── STATS ─── */}
         <div className="grid grid-cols-3 gap-3">

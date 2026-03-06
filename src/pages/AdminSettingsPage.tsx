@@ -215,7 +215,7 @@ export default function AdminSettingsPage() {
 
             {/* Header */}
             <header className="sticky top-0 z-50 bg-black/60 backdrop-blur-xl border-b border-amber-500/10 relative mb-8">
-                <div className="w-full px-4 md:px-8 lg:px-12 h-20 flex items-center justify-between">
+                <div className="max-w-4xl mx-auto px-4 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <h1 className="font-black text-2xl text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-500">إعدادات النظام</h1>
                     </div>
@@ -230,7 +230,7 @@ export default function AdminSettingsPage() {
                 </div>
             </header>
 
-            <div className="w-full px-4 md:px-8 lg:px-12 relative z-10 space-y-8">
+            <div className="max-w-4xl mx-auto px-4 relative z-10 space-y-8">
                 {/* Shop Settings */}
                 <Card className="rounded-[2.5rem] border border-amber-500/10 bg-gradient-to-b from-slate-950 to-black backdrop-blur-xl shadow-2xl overflow-hidden relative group">
                     <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />

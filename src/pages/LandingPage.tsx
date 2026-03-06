@@ -282,7 +282,7 @@ export default function LandingPage() {
 
       {/* ─── HEADER ─── */}
       <header className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-xl border-b border-white/5">
-        <div className="w-full px-4 md:px-8 lg:px-12 h-auto min-h-[4.5rem] py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="max-w-6xl mx-auto px-4 h-auto min-h-[4.5rem] py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center">
               <Scissors className="w-5 h-5 text-black" />
@@ -324,8 +324,8 @@ export default function LandingPage() {
         {/* Yellow side stripe */}
         <div className="absolute right-0 top-0 w-1 h-full bg-yellow-400 z-10" />
 
-        <div className="w-full px-4 md:px-8 lg:px-12 pt-24 pb-12 relative z-10">
-          <div className="max-w-3xl space-y-6">
+        <div className="max-w-6xl mx-auto px-4 pt-24 pb-12 relative z-10 w-full">
+          <div className="max-w-2xl space-y-6">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/30 rounded-full px-4 py-2 text-yellow-400 text-sm font-bold">
               <Scissors className="w-4 h-4" />
@@ -378,7 +378,7 @@ export default function LandingPage() {
       <section className="relative overflow-hidden border-y border-zinc-800">
         <img src="/queue-bg.png" alt="Barbershop waiting area" className="w-full h-72 md:h-96 object-cover opacity-50" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-black/70 flex items-end">
-          <div className="w-full px-4 md:px-8 lg:px-12 pb-10">
+          <div className="max-w-6xl mx-auto px-4 pb-10 w-full">
             <div ref={statsRef} className="grid grid-cols-3 gap-6 max-w-3xl">
               {[
                 { num: stat1, suffix: '+', label: 'صالون نشط' },
@@ -399,7 +399,7 @@ export default function LandingPage() {
 
       {/* ─── HOW IT WORKS ─── */}
       <section className="py-20 bg-zinc-950">
-        <div className="w-full px-4 md:px-8 lg:px-12">
+        <div className="max-w-6xl mx-auto px-4">
           <div className="mb-12">
             <p className="text-yellow-400 font-bold tracking-widest uppercase text-sm mb-3">كيف يشتغل</p>
             <h2 className="text-4xl md:text-5xl font-black text-white">3 خطوات <span className="text-yellow-400">بس</span></h2>
@@ -426,7 +426,7 @@ export default function LandingPage() {
 
       {/* ─── FEATURES ─── */}
       <section id="features" className="py-20 bg-black">
-        <div className="w-full px-4 md:px-8 lg:px-12">
+        <div className="max-w-6xl mx-auto px-4">
           <div className="mb-12">
             <p className="text-yellow-400 font-bold tracking-widest uppercase text-sm mb-3">المزايا</p>
             <h2 className="text-4xl md:text-5xl font-black text-white">كل اللي تحتاجه<br /><span className="text-yellow-400">في مكان واحد</span></h2>
@@ -467,7 +467,7 @@ export default function LandingPage() {
 
       {/* ─── FOOTER ─── */}
       <footer className="py-10 bg-black border-t border-zinc-900 text-center text-zinc-600">
-        <div className="w-full px-4 md:px-8 lg:px-12 flex flex-col items-center gap-3">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col items-center gap-3">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 bg-yellow-400 rounded-lg flex items-center justify-center">
               <Scissors className="w-4 h-4 text-black" />

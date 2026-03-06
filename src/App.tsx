@@ -6,7 +6,6 @@ import CustomerBookingPage from '@/pages/CustomerBookingPage';
 import AdminDashboard from '@/pages/AdminDashboard';
 import ArchivePage from '@/pages/ArchivePage';
 import AdminSettingsPage from '@/pages/AdminSettingsPage';
-import './App.css';
 
 function App() {
   return (

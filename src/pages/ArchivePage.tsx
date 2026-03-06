@@ -157,7 +157,7 @@ export default function ArchivePage() {
 
       {/* Header */}
       <header className="sticky top-0 z-50 bg-black/60 backdrop-blur-xl border-b border-amber-500/10 relative">
-        <div className="w-full px-4 md:px-8 lg:px-12 h-20 flex items-center justify-between">
+        <div className="max-w-4xl mx-auto px-4 h-20 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button
               variant="ghost"
@@ -175,7 +175,7 @@ export default function ArchivePage() {
         </div>
       </header>
 
-      <div className="w-full px-4 md:px-8 lg:px-12 py-8 relative z-10">
+      <div className="max-w-4xl mx-auto px-4 py-8 relative z-10">
         {/* Date Filter */}
         <Card className="rounded-[2.5rem] border border-amber-500/10 bg-gradient-to-b from-slate-950 to-black backdrop-blur-xl shadow-2xl mb-8">
           <CardContent className="p-6">
@@ -250,8 +250,8 @@ export default function ArchivePage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0">
                     <div className="flex items-center gap-5">
                       <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 border shadow-inner ${ticket.status === 'completed'
-                        ? 'bg-gradient-to-br from-green-500/20 to-black border-green-500/30 text-green-400 group-hover:shadow-[0_0_15px_rgba(34,197,94,0.2)]'
-                        : 'bg-gradient-to-br from-red-500/20 to-black border-red-500/30 text-red-500 group-hover:shadow-[0_0_15px_rgba(239,68,68,0.2)]'
+                          ? 'bg-gradient-to-br from-green-500/20 to-black border-green-500/30 text-green-400 group-hover:shadow-[0_0_15px_rgba(34,197,94,0.2)]'
+                          : 'bg-gradient-to-br from-red-500/20 to-black border-red-500/30 text-red-500 group-hover:shadow-[0_0_15px_rgba(239,68,68,0.2)]'
                         }`}>
                         <span className="text-2xl font-black">#{ticket.ticket_number}</span>
                       </div>
