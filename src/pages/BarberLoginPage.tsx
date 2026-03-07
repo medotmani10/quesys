@@ -50,9 +50,12 @@ export default function BarberLoginPage() {
 
         setLoading(true);
 
-        // Generate pseudo email
-        const safeName = btoa(encodeURIComponent(username.trim())).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-        const pseudoEmail = `${safeName}@${slug}.com`;
+        // Generate pseudo email (hex encoding to match admin creation)
+        const rawName = username.trim();
+        const hexName = Array.from(new TextEncoder().encode(rawName))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+        const pseudoEmail = `${hexName}@${slug}.com`;
 
         const { error } = await supabase.auth.signInWithPassword({
             email: pseudoEmail,

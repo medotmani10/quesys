@@ -176,9 +176,12 @@ export default function AdminSettingsPage() {
         setSaving(true);
         try {
             // Generate deterministic pseudo email from Arabic/English username
+            // We use hex encoding instead of base64 to avoid padding (=) or invalid email chars
             const rawName = newBarberName.trim();
-            const safeName = btoa(encodeURIComponent(rawName)).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-            const pseudoEmail = `${safeName}@${shop.slug}.com`;
+            const hexName = Array.from(new TextEncoder().encode(rawName))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+            const pseudoEmail = `${hexName}@${shop.slug}.com`;
 
             // Create a temporary client to avoid overwriting the admin's session
             const tempClient = createClient(
@@ -238,10 +241,12 @@ export default function AdminSettingsPage() {
 
             // If a new password is provided, or the name changed (affecting pseudo-email), we MUST create a new Auth user
             if (editBarberPassword.trim() || editBarberName.trim() !== editingBarber.name) {
-                // Generate new pseudo email
+                // Generate new strictly valid deterministic pseudo email
                 const rawName = editBarberName.trim();
-                const safeName = btoa(encodeURIComponent(rawName)).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-                const pseudoEmail = `${safeName}@${shop.slug}.com`;
+                const hexName = Array.from(new TextEncoder().encode(rawName))
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join('');
+                const pseudoEmail = `${hexName}@${shop.slug}.com`;
 
                 // Password is required if we are generating a new auth user
                 const passwordToUse = editBarberPassword.trim() || 'defaultpassword123!';
