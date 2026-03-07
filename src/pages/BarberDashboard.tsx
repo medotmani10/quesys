@@ -77,6 +77,11 @@ export default function BarberDashboard() {
             }
             setShop(shopData as Shop);
 
+            // Successfully authenticated as a barber for this shop, save slug for Standalone PWA entry
+            if (slug) {
+                localStorage.setItem('barber_shop_slug', slug);
+            }
+
             // 3. Fetch Tickets
             await fetchTickets(shopData.id, barberData.id);
 

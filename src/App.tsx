@@ -11,10 +11,38 @@ import TicketStatusPage from '@/pages/TicketStatusPage';
 import TVDisplayPage from '@/pages/TVDisplayPage';
 import BarberLoginPage from '@/pages/BarberLoginPage';
 import BarberDashboard from '@/pages/BarberDashboard';
+import { Scissors } from 'lucide-react';
 
 // Detect if the app is running as an installed PWA (standalone mode)
 const isPWA = window.matchMedia('(display-mode: standalone)').matches
   || (window.navigator as any).standalone === true;
+
+// Fallback component for the Barber Standalone App
+// The barber manifest's start_url is /barber-entry
+function BarberEntryFallback() {
+  const savedSlug = localStorage.getItem('barber_shop_slug');
+
+  if (savedSlug) {
+    return <Navigate to={`/${savedSlug}/barber`} replace />;
+  }
+
+  return (
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-zinc-950 text-white p-6 text-center" dir="rtl">
+      <div className="w-20 h-20 bg-yellow-400/10 rounded-3xl flex items-center justify-center mb-8 border border-yellow-400/20 shadow-[0_0_30px_rgba(250,204,21,0.15)]">
+        <Scissors className="w-10 h-10 text-yellow-400" />
+      </div>
+      <h1 className="text-3xl font-black mb-4">أهلاً بك في لوحة الحلاق</h1>
+      <p className="text-zinc-400 text-lg max-w-sm mb-8">
+        للدخول إلى حسابك، يرجى فتح الرابط الخاص بصالونك أولاً، وسيقوم التطبيق بتذكر صالونك في المرة القادمة تلقائياً.
+      </p>
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-sm text-zinc-500 w-full max-w-sm">
+        مثال:
+        <br />
+        <span className="text-white font-mono mt-2 block">barberticket.com/<b>[اسم الصالون]</b>/barber/login</span>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   return (
@@ -43,6 +71,7 @@ function App() {
           <Route path="/:slug/tv" element={<TVDisplayPage />} />
 
           {/* Barber PWA pages */}
+          <Route path="/barber-entry" element={<BarberEntryFallback />} />
           <Route path="/:slug/barber/login" element={<BarberLoginPage />} />
           <Route path="/:slug/barber" element={<BarberDashboard />} />
 

@@ -35,7 +35,8 @@ export default function BarberLoginPage() {
                     .eq('id', barber.shop_id)
                     .single();
 
-                if (shop && shop.slug === slug) {
+                if (shop && shop.slug === slug && slug) {
+                    localStorage.setItem('barber_shop_slug', slug);
                     navigate(`/${slug}/barber`);
                 }
             }
@@ -85,7 +86,8 @@ export default function BarberLoginPage() {
                     .eq('id', barber.shop_id)
                     .single();
 
-                if (shop && shop.slug === slug) {
+                if (shop && shop.slug === slug && slug) {
+                    localStorage.setItem('barber_shop_slug', slug);
                     navigate(`/${slug}/barber`);
                     setLoading(false);
                     return;
