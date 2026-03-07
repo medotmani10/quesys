@@ -51,11 +51,11 @@ export function ThermalTicket({
         <div
             id="thermal-ticket-content"
             style={{
-                width: '58mm',
+                width: '220px', // Explicit 220px (~58mm) to stop html-to-image clipping
                 fontFamily: '"Cairo", "Noto Kufi Arabic", monospace',
                 backgroundColor: '#fff',
                 color: '#000',
-                padding: '4mm 3mm',
+                padding: '15px 12px',
                 boxSizing: 'border-box',
                 direction: 'rtl',
                 textAlign: 'center',
@@ -68,8 +68,8 @@ export function ThermalTicket({
             </div>
 
             {/* Ticket Number - HUGE */}
-            <div style={{ margin: '3mm 0' }}>
-                <div style={{ fontSize: '8pt', fontWeight: '700', color: '#666', marginBottom: '1mm', letterSpacing: '1px' }}>
+            <div style={{ margin: '3mm 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ fontSize: '10pt', fontWeight: '700', color: '#666', marginBottom: '2mm' }}>
                     رقم التذكرة
                 </div>
                 <div style={{
@@ -78,8 +78,10 @@ export function ThermalTicket({
                     lineHeight: '1',
                     border: '2px solid #000',
                     borderRadius: '3mm',
-                    padding: '3mm 0',
-                    letterSpacing: '-2px',
+                    padding: '2mm 10mm',
+                    margin: '0 auto',
+                    textAlign: 'center',
+                    display: 'inline-block'
                 }}>
                     {code}
                 </div>
@@ -91,9 +93,10 @@ export function ThermalTicket({
                 border: '1px solid #000',
                 borderRadius: '10mm',
                 padding: '1mm 5mm',
-                fontSize: '8pt',
+                fontSize: '9pt',
                 fontWeight: '700',
                 marginBottom: '3mm',
+                margin: '0 auto',
             }}>
                 ⏳ في قائمة الانتظار
             </div>
@@ -158,22 +161,32 @@ export function printThermalTicket(props: ThermalTicketProps) {
         const ticketEl = container.querySelector('#thermal-ticket-content') as HTMLElement;
         if (!ticketEl) { document.body.removeChild(container); return; }
 
-        // ── 1. PDF download ──
+        // ── 1. PDF download (Fixed Arabic using html-to-image + jsPDF) ──
         try {
-            const html2pdf = (await import('html2pdf.js')).default;
+            const { toPng } = await import('html-to-image');
+            const { jsPDF } = await import('jspdf');
+
             const code = props.barberIndex !== undefined && props.barberIndex >= 0
                 ? `${String.fromCharCode(65 + (props.barberIndex % 26))}${props.ticketNumber}`
                 : `${props.ticketNumber}`;
-            await html2pdf()
-                .set({
-                    margin: 0,
-                    filename: `تذكرة-${code}-${props.customerName}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 3, useCORS: true, logging: false },
-                    jsPDF: { unit: 'mm', format: [58, 180], orientation: 'portrait' },
-                })
-                .from(ticketEl)
-                .save();
+
+            // We use html-to-image which properly renders Arabic text natively
+            const dataUrl = await toPng(ticketEl, {
+                quality: 1,
+                backgroundColor: '#ffffff',
+                pixelRatio: 3, // High-res
+                width: 220, // explicitly enforce the width
+                style: { margin: '0' }
+            });
+
+            const pdf = new jsPDF({
+                unit: 'mm',
+                format: [58, 180],
+                orientation: 'portrait'
+            });
+
+            pdf.addImage(dataUrl, 'PNG', 0, 0, 58, 180);
+            pdf.save(`تذكرة-${code}-${props.customerName}.pdf`);
         } catch (err) {
             console.error('PDF download failed:', err);
         }
