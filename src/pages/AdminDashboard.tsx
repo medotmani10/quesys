@@ -409,6 +409,7 @@ export default function AdminDashboard() {
         ticketId: insertedTicket.id,
         customerName: manualName.trim(),
         barberName,
+        barberIndex,
         shopName: shop.name,
         shopSlug: shop.slug,
         peopleCount: manualPeople,
@@ -448,13 +449,18 @@ export default function AdminDashboard() {
 
   const resetQueue = async () => {
     if (!shop) return;
-    const { error } = await supabase
+    const { error: ticketsErr } = await supabase
       .from('tickets')
       .update({ status: 'canceled' })
       .eq('shop_id', shop.id)
       .in('status', ['waiting', 'serving']);
 
-    if (error) {
+    const { error: shopErr } = await supabase
+      .from('shops')
+      .update({ last_reset_at: new Date().toISOString() })
+      .eq('id', shop.id);
+
+    if (ticketsErr || shopErr) {
       toast.error('فشل تصفير الطابور');
     } else {
       toast.success('تم تصفير الطابور بنجاح');

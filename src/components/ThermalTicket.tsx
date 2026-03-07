@@ -14,6 +14,7 @@ interface ThermalTicketProps {
     ticketId: string;
     customerName: string;
     barberName?: string;
+    barberIndex?: number;
     shopName: string;
     shopSlug: string;
     peopleCount: number;
@@ -25,11 +26,15 @@ export function ThermalTicket({
     ticketId,
     customerName,
     barberName,
+    barberIndex,
     shopName,
     peopleCount,
     createdAt,
 }: ThermalTicketProps) {
     const trackingUrl = `${window.location.origin}/t/${ticketId}`;
+    const code = barberIndex !== undefined && barberIndex >= 0
+        ? `${String.fromCharCode(65 + (barberIndex % 26))}${ticketNumber}`
+        : `${ticketNumber}`;
 
     const timeStr = createdAt.toLocaleTimeString('ar-DZ', {
         hour: '2-digit',
@@ -76,7 +81,7 @@ export function ThermalTicket({
                     padding: '3mm 0',
                     letterSpacing: '-2px',
                 }}>
-                    {ticketNumber}
+                    {code}
                 </div>
             </div>
 
@@ -156,12 +161,9 @@ export function printThermalTicket(props: ThermalTicketProps) {
         // ── 1. PDF download ──
         try {
             const html2pdf = (await import('html2pdf.js')).default;
-            // ✅ FIXED C-4: use ASCII-safe prefix for filename (no Arabic chars)
-            const firstChar = props.barberName?.trim()[0] ?? 'T';
-            const prefix = /[a-zA-Z]/.test(firstChar)
-                ? firstChar.toUpperCase()
-                : String.fromCharCode(65 + (firstChar.charCodeAt(0) % 26));
-            const code = `${prefix}${String(props.ticketNumber).padStart(3, '0')}`;
+            const code = props.barberIndex !== undefined && props.barberIndex >= 0
+                ? `${String.fromCharCode(65 + (props.barberIndex % 26))}${props.ticketNumber}`
+                : `${props.ticketNumber}`;
             await html2pdf()
                 .set({
                     margin: 0,
@@ -176,15 +178,18 @@ export function printThermalTicket(props: ThermalTicketProps) {
             console.error('PDF download failed:', err);
         }
 
-        // ── 2. Thermal print dialog ──
         const printWindow = window.open('', '_blank', 'width=250,height=620');
         if (printWindow) {
+            const code = props.barberIndex !== undefined && props.barberIndex >= 0
+                ? `${String.fromCharCode(65 + (props.barberIndex % 26))}${props.ticketNumber}`
+                : `${props.ticketNumber}`;
+
             printWindow.document.write(`
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="UTF-8">
-  <title>تذكرة #${props.ticketNumber}</title>
+  <title>تذكرة #${code}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
   <style>
