@@ -70,6 +70,9 @@ export default function CustomerBookingPage() {
           });
         }
       })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'shops', filter: `id=eq.${shop.id}` }, (payload) => {
+        setShop(payload.new as Shop);
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [shop?.id]);
