@@ -17,6 +17,7 @@ export default function BarberDashboard() {
     const [barber, setBarber] = useState<Barber | null>(null);
     const [servingTicket, setServingTicket] = useState<Ticket | null>(null);
     const [waitingTickets, setWaitingTickets] = useState<Ticket[]>([]);
+    const [barberIndex, setBarberIndex] = useState<number>(0);
 
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
@@ -83,7 +84,19 @@ export default function BarberDashboard() {
                 localStorage.setItem('barber_shop_slug', slug);
             }
 
-            // 3. Fetch Tickets
+            // 3. Get all barbers to calculate index for tickets
+            const { data: allBarbers } = await supabase
+                .from('barbers')
+                .select('id')
+                .eq('shop_id', shopData.id)
+                .order('created_at', { ascending: true });
+
+            if (allBarbers) {
+                const idx = allBarbers.findIndex(b => b.id === barberData.id);
+                setBarberIndex(idx >= 0 ? idx : 0);
+            }
+
+            // 4. Fetch Tickets
             await fetchTickets(shopData.id, barberData.id);
 
         } catch (error) {
@@ -252,9 +265,9 @@ export default function BarberDashboard() {
                     <div className="p-8 text-center min-h-[220px] flex flex-col justify-center items-center relative">
                         {servingTicket ? (
                             <div className="space-y-4 animate-in zoom-in-95 duration-300">
-                                <span className="inline-block px-4 py-1.5 rounded-full bg-yellow-400/20 text-yellow-400 font-bold text-sm mb-2 border border-yellow-400/30">
-                                    {getTicketCode(barber.name, servingTicket.ticket_number)}
-                                </span>
+                                <div className="text-8xl sm:text-9xl mb-4 text-green-400 drop-shadow-[0_0_15px_rgba(74,222,128,0.5)]">
+                                    {getTicketCode(barberIndex, servingTicket.ticket_number)}
+                                </div>
                                 <h3 className="text-4xl sm:text-5xl font-black text-white leading-tight">
                                     {servingTicket.customer_name}
                                 </h3>
@@ -313,8 +326,8 @@ export default function BarberDashboard() {
                                         {idx + 1}
                                     </div>
                                     <div>
-                                        <p className="font-bold text-white text-lg">{ticket.customer_name}</p>
-                                        <p className="text-zinc-500 text-xs font-semibold">{getTicketCode(barber.name, ticket.ticket_number)} • {ticket.people_count} أشخاص</p>
+                                        <p className="font-black text-white text-xl">رقم {getTicketCode(barberIndex, ticket.ticket_number)}</p>
+                                        <p className="text-zinc-500 text-xs font-semibold">{ticket.customer_name} • {ticket.people_count} أشخاص</p>
                                     </div>
                                 </div>
                             </div>

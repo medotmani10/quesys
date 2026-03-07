@@ -51,9 +51,9 @@ function StatCard({ label, value, color, sub }: { label: string; value: number; 
 }
 
 /* ─── TicketRow ─── */
-function TicketRow({ ticket, barberName, onCancel }: { ticket: Ticket; barberName?: string; onCancel: () => void }) {
+function TicketRow({ ticket, barberIndex, onCancel }: { ticket: Ticket; barberIndex?: number; onCancel: () => void }) {
   const [pressing, setPressing] = useState(false);
-  const code = getTicketCode(barberName, ticket.ticket_number);
+  const code = getTicketCode(barberIndex, ticket.ticket_number);
   return (
     <div
       className={cn(
@@ -85,8 +85,8 @@ function TicketRow({ ticket, barberName, onCancel }: { ticket: Ticket; barberNam
 }
 
 /* ─── ServingBadge ─── */
-function ServingBadge({ ticket, barberName, onFinish }: { ticket: Ticket; barberName?: string; onFinish: () => void }) {
-  const code = getTicketCode(barberName, ticket.ticket_number);
+function ServingBadge({ ticket, barberIndex, onFinish }: { ticket: Ticket; barberIndex?: number; onFinish: () => void }) {
+  const code = getTicketCode(barberIndex, ticket.ticket_number);
   return (
     <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-4 overflow-hidden relative">
       {/* shimmer */}
@@ -116,9 +116,10 @@ function ServingBadge({ ticket, barberName, onFinish }: { ticket: Ticket; barber
 
 /* ─── BarberCard ─── */
 function BarberCard({
-  barber, serving, waiting, processingBarber, onNext, onCancel, onFinish,
+  barber, barberIndex, serving, waiting, processingBarber, onNext, onCancel, onFinish,
 }: {
   barber: Barber;
+  barberIndex: number;
   serving?: Ticket;
   waiting: Ticket[];
   processingBarber: string | null;
@@ -139,7 +140,7 @@ function BarberCard({
           'w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg transition-colors',
           serving ? 'bg-green-500/15 text-green-400' : 'bg-yellow-400/10 text-yellow-400'
         )}>
-          {barber.name[0].toUpperCase()}
+          {String.fromCharCode(65 + (barberIndex % 26))}
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-black text-white text-base leading-tight truncate">{barber.name}</h3>
@@ -156,7 +157,7 @@ function BarberCard({
 
       {/* Body */}
       <div className="p-4 flex-1 flex flex-col gap-3">
-        {serving && <ServingBadge ticket={serving} barberName={barber.name} onFinish={() => onFinish(serving.id)} />}
+        {serving && <ServingBadge ticket={serving} barberIndex={barberIndex} onFinish={() => onFinish(serving.id)} />}
 
         {/* Next button */}
         <button
@@ -184,7 +185,7 @@ function BarberCard({
         {waiting.length > 0 && (
           <div className="space-y-2 max-h-40 overflow-y-auto scrollbar-hide mt-1">
             {waiting.map((t) => (
-              <TicketRow key={t.id} ticket={t} barberName={barber.name} onCancel={() => onCancel(t.id)} />
+              <TicketRow key={t.id} ticket={t} barberIndex={barberIndex} onCancel={() => onCancel(t.id)} />
             ))}
           </div>
         )}
@@ -240,10 +241,16 @@ export default function AdminDashboard() {
       const { data: shopData, error } = await supabase.from('shops').select('*').eq('owner_id', userId).single();
       if (error || !shopData) { navigate('/onboarding'); return; }
       setShop(shopData as Shop);
-      const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', shopData.id).order('name');
+      // Order by created_at strictly to ensure stable letters A, B
+      const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', shopData.id).order('created_at', { ascending: true });
       setBarbers((barbersData as Barber[]) || []);
       setLoading(false);
     } catch { toast.error('حدث خطأ في تحميل البيانات'); setLoading(false); }
+  };
+
+  const getBarberIndex = (barberId: string | undefined | null) => {
+    if (!barberId) return -1;
+    return barbers.findIndex(b => b.id === barberId);
   };
 
   const loadTickets = useCallback(async () => {
@@ -275,7 +282,7 @@ export default function AdminDashboard() {
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'barbers', filter: `shop_id=eq.${shop.id}` },
         async () => {
-          const { data: bData } = await supabase.from('barbers').select('*').eq('shop_id', shop.id).order('name');
+          const { data: bData } = await supabase.from('barbers').select('*').eq('shop_id', shop.id).order('created_at', { ascending: true });
           if (bData) setBarbers(bData as Barber[]);
         }
       )
@@ -298,11 +305,15 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!shop) return;
     if (!manualBarber) { toast.error('يرجى اختيار الحلاق'); return; }
-    const { data: ticketNumberData, error: tErr } = await supabase.rpc('get_next_ticket_number', { p_shop_id: shop.id });
+    const { data: ticketNumberData, error: tErr } = await supabase.rpc('get_next_ticket_number', {
+      p_shop_id: shop.id,
+      p_barber_id: manualBarber
+    });
     if (tErr) { toast.error('فشل في إنشاء التذكرة'); return; }
     const ticketNumber = ticketNumberData as number;
+    const barberIndex = getBarberIndex(manualBarber);
     const barberName = barbers.find(b => b.id === manualBarber)?.name;
-    const ticketCode = getTicketCode(barberName, ticketNumber);
+    const ticketCode = getTicketCode(barberIndex, ticketNumber);
     const { data: insertedTicket, error } = await supabase.from('tickets').insert({
       shop_id: shop.id, barber_id: manualBarber,
       customer_name: manualName.trim(), phone_number: manualPhone.trim(),
@@ -666,6 +677,7 @@ export default function AdminDashboard() {
                   <BarberCard
                     key={barber.id}
                     barber={barber}
+                    barberIndex={getBarberIndex(barber.id)}
                     serving={getCurrentServing(barber.id)}
                     waiting={getBarberTickets(barber.id, 'waiting')}
                     processingBarber={processingBarber}
@@ -701,7 +713,8 @@ export default function AdminDashboard() {
                   .filter(t => t.status === 'waiting' || t.status === 'serving')
                   .map((t) => {
                     const barber = barbers.find(b => b.id === t.barber_id);
-                    const code = getTicketCode(barber?.name, t.ticket_number);
+                    const barberIndex = getBarberIndex(barber?.id);
+                    const code = getTicketCode(barberIndex, t.ticket_number);
                     return (
                       <div key={t.id} className="flex items-center gap-4 px-5 py-4 hover:bg-zinc-900/50 transition-colors group">
                         <div className={cn(

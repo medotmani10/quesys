@@ -8,28 +8,16 @@ import { Label } from '@/components/ui/label';
 import { MapPin, User, Phone, Users, Scissors, AlertCircle, Loader2, X, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
-/** Returns the per-barber display code, e.g. "A001" for Ahmed, ticket 1.
- *  ✅ FIXED H-1: safe against Arabic names, empty strings, and ticket_number > 999 */
-export function getTicketCode(barberName: string | null | undefined, ticketNumber: number): string {
+/** Returns the per-barber display code, e.g. "A1" for the 1st barber, "B1" for the 2nd.
+ *  It uses the index of the barber in the sorted list (0 = A, 1 = B). */
+export function getTicketCode(barberIndex: number | undefined, ticketNumber: number): string {
   let prefix = '#';
-  if (barberName) {
-    const trimmed = barberName.trim();
-    if (trimmed.length > 0) {
-      const firstChar = trimmed[0];
-      // If the first char is a Latin letter, use it uppercase
-      if (/[a-zA-Z]/.test(firstChar)) {
-        prefix = firstChar.toUpperCase();
-      } else {
-        // For Arabic/other scripts, map to a safe ASCII prefix via charCode mod 26
-        // e.g. 'أ' -> code 65 -> 'A', 'م' -> code 77 -> 'M'
-        const code = trimmed.charCodeAt(0) % 26;
-        prefix = String.fromCharCode(65 + code); // A-Z
-      }
-    }
+  if (barberIndex !== undefined && barberIndex >= 0) {
+    // 0 -> 'A', 1 -> 'B', 2 -> 'C', etc.
+    prefix = String.fromCharCode(65 + (barberIndex % 26));
   }
-  // Cap at 9999 to avoid overflow — show '####' as error code
-  if (ticketNumber > 9999) return `${prefix}####`;
-  return `${prefix}${String(ticketNumber).padStart(3, '0')}`;
+
+  return `${prefix}${ticketNumber}`;
 }
 
 export default function CustomerBookingPage() {
@@ -148,7 +136,10 @@ export default function CustomerBookingPage() {
         return;
       }
       const sessionId = getOrCreateSessionId();
-      const { data: ticketNumberData, error: ticketNumError } = await supabase.rpc('get_next_ticket_number', { p_shop_id: shop.id });
+      const { data: ticketNumberData, error: ticketNumError } = await supabase.rpc('get_next_ticket_number', {
+        p_shop_id: shop.id,
+        p_barber_id: selectedBarber
+      });
       if (ticketNumError) { toast.error('فشل في إنشاء التذكرة'); setSubmitting(false); return; }
       const { data: ticket, error } = await supabase.from('tickets').insert({
         shop_id: shop.id,
@@ -183,6 +174,10 @@ export default function CustomerBookingPage() {
   };
 
   const getBarberById = (barberId: string | null) => barbers.find(b => b.id === barberId) || null;
+  const getBarberIndex = (barberId: string | null) => {
+    if (!barberId) return -1;
+    return barbers.findIndex(b => b.id === barberId);
+  };
 
   // ─── LOADING ───
   if (loading) return (
@@ -227,7 +222,8 @@ export default function CustomerBookingPage() {
   // ─── ACTIVE TICKET ───
   if (activeTicket) {
     const activeBarber = getBarberById(activeTicket.barber_id);
-    const ticketCode = getTicketCode(activeBarber?.name, activeTicket.ticket_number);
+    const activeBarberIndex = getBarberIndex(activeTicket.barber_id);
+    const ticketCode = getTicketCode(activeBarberIndex, activeTicket.ticket_number);
     return (
       <div className="min-h-[100dvh] bg-black p-4">
         <div className="w-full max-w-xl mx-auto pt-6">

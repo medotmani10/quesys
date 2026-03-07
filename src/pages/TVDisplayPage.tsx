@@ -14,6 +14,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { playTicketSound } from '@/lib/notificationSound';
+import { getTicketCode } from '@/pages/CustomerBookingPage';
 import type { Ticket, Shop, Barber } from '@/types/database';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -101,25 +102,44 @@ export default function TVDisplayPage() {
         []
     );
 
-    // ── Fetch snapshot ────────────────────────────────────────────────────────
+    // ── Fetch snapshot (Barbers + Tickets) ────────────────────────────────────
     const fetchQueue = useCallback(
-        async (shopId: string, barbers: Barber[], isLive = true) => {
-            const { data, error: err } = await supabase
+        async (shopId: string, isLive = true) => {
+            // 1. Fetch active barbers
+            const { data: barberData, error: barberErr } = await supabase
+                .from('barbers')
+                .select('*')
+                .eq('shop_id', shopId)
+                .eq('is_active', true)
+                .order('name', { ascending: true });
+
+            if (barberErr || !barberData) {
+                console.error('[TV] fetchQueue barbers error:', barberErr);
+                return;
+            }
+            const activeBarbers = barberData as Barber[];
+
+            // 2. Fetch active/waiting tickets
+            const { data: ticketData, error: ticketErr } = await supabase
                 .from('tickets')
                 .select('*')
                 .eq('shop_id', shopId)
                 .in('status', ['serving', 'waiting'])
                 .order('ticket_number', { ascending: true });
 
-            if (err) { console.error('[TV] fetchQueue:', err); return; }
-            buildQueues(barbers, (data ?? []) as Ticket[], isLive);
+            if (ticketErr) {
+                console.error('[TV] fetchQueue tickets error:', ticketErr);
+                return;
+            }
+
+            buildQueues(activeBarbers, (ticketData ?? []) as Ticket[], isLive);
         },
         [buildQueues]
     );
 
     // ── Realtime subscription ─────────────────────────────────────────────────
     const subscribe = useCallback(
-        (shopId: string, barbers: Barber[]) => {
+        (shopId: string) => {
             if (channelRef.current) {
                 supabase.removeChannel(channelRef.current);
                 channelRef.current = null;
@@ -130,7 +150,11 @@ export default function TVDisplayPage() {
                 .on('postgres_changes', {
                     event: '*', schema: 'public', table: 'tickets',
                     filter: `shop_id=eq.${shopId}`,
-                }, () => fetchQueue(shopId, barbers, true))
+                }, () => fetchQueue(shopId, true))
+                .on('postgres_changes', {
+                    event: '*', schema: 'public', table: 'barbers',
+                    filter: `shop_id=eq.${shopId}`,
+                }, () => fetchQueue(shopId, false)) // false = do not play ding when just barber status changes
                 .subscribe((status) => {
                     if (status === 'SUBSCRIBED') {
                         setReconnecting(false);
@@ -143,8 +167,8 @@ export default function TVDisplayPage() {
                         setReconnecting(true);
                         if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
                         reconnectTimerRef.current = setTimeout(() => {
-                            subscribe(shopId, barbers);
-                            fetchQueue(shopId, barbers, true);
+                            subscribe(shopId);
+                            fetchQueue(shopId, true);
                         }, delay);
                     }
                 });
@@ -174,27 +198,14 @@ export default function TVDisplayPage() {
             }
             setShop(shopData as ShopData);
 
-            // 2. Fetch active barbers
-            const { data: barberData, error: barberErr } = await supabase
-                .from('barbers')
-                .select('*')
-                .eq('shop_id', shopData.id)
-                .eq('is_active', true)
-                .order('name', { ascending: true });
+            // 2. Initial snapshot (isLive=false → no ding on first load)
+            // This now fetches both barbers and tickets internally
+            await fetchQueue(shopData.id, false);
 
             if (cancelled) return;
-            if (barberErr || !barberData?.length) {
-                setError('لا يوجد حلاقون نشطون في هذا الصالون');
-                return;
-            }
 
-            const barbers = barberData as Barber[];
-
-            // 3. Initial snapshot (isLive=false → no ding on first load)
-            await fetchQueue(shopData.id, barbers, false);
-
-            // 4. Subscribe
-            subscribe(shopData.id, barbers);
+            // 3. Subscribe to both tickets and barbers changes
+            subscribe(shopData.id);
         }
 
         boot();
@@ -308,19 +319,22 @@ export default function TVDisplayPage() {
             </header>
 
             {/* ── BARBER COLUMNS ─────────────────────────────────────────────────── */}
-            <main className="relative z-10 flex flex-1 min-h-0 gap-0">
+            <main
+                className="relative z-10 flex-1 min-h-0 grid gap-0"
+                style={{ gridTemplateColumns: `repeat(${Math.max(1, queues.length)}, minmax(0, 1fr))` }}
+            >
                 {queues.map((bq, idx) => (
                     <BarberColumn
                         key={bq.barber.id}
                         bq={bq}
+                        barberIndex={idx}
                         isLast={idx === queues.length - 1}
                         totalBarbers={queues.length}
                     />
                 ))}
 
-                {/* Empty state while loading */}
                 {queues.length === 0 && (
-                    <div className="flex-1 flex items-center justify-center">
+                    <div className="flex items-center justify-center">
                         <div className="flex flex-col items-center gap-4 opacity-70">
                             <div className="text-5xl animate-pulse drop-shadow-lg">✂️</div>
                             <p className="text-white text-xl font-bold drop-shadow-md">جاري تحميل البيانات…</p>
@@ -347,32 +361,35 @@ export default function TVDisplayPage() {
 // ─────────────────────────────────────────────────────────────────────────────
 function BarberColumn({
     bq,
+    barberIndex,
     isLast,
     totalBarbers,
 }: {
     bq: BarberQueue;
+    barberIndex: number;
     isLast: boolean;
     totalBarbers: number;
 }) {
-    // For ≥4 barbers make the number smaller
     const numFontSize =
-        totalBarbers >= 4
-            ? 'clamp(4rem, 10vw, 9rem)'
-            : totalBarbers === 3
-                ? 'clamp(5rem, 13vw, 12rem)'
-                : 'clamp(6rem, 16vw, 16rem)';
+        totalBarbers >= 5
+            ? 'clamp(3rem, 6vw, 6rem)'
+            : totalBarbers === 4
+                ? 'clamp(4rem, 8vw, 8rem)'
+                : totalBarbers === 3
+                    ? 'clamp(5rem, 11vw, 10rem)'
+                    : 'clamp(6rem, 14vw, 14rem)';
 
     return (
         <div
             className={`
-        flex flex-col flex-1 min-w-0 h-full
+        flex flex-col h-full min-w-0
         ${!isLast ? 'border-l border-white/5' : ''}
       `}
         >
             {/* Barber name header */}
-            <div className="flex items-center justify-center gap-2 py-4 px-4 border-b border-white/20 bg-white/10 backdrop-blur-md shrink-0 shadow-sm">
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
-                <span className="text-white font-black text-2xl tracking-wide drop-shadow-md">{bq.barber.name}</span>
+            <div className="flex items-center justify-center gap-2 py-4 px-4 border-b border-white/20 bg-white/10 backdrop-blur-md shrink-0 shadow-sm min-w-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)] shrink-0" />
+                <span className="text-white font-black text-xl lg:text-2xl tracking-wide drop-shadow-md truncate min-w-0">{bq.barber.name}</span>
             </div>
 
             {/* Currently Serving */}
@@ -396,10 +413,10 @@ function BarberColumn({
                                 }`}
                             style={{ fontSize: numFontSize }}
                         >
-                            {bq.serving.ticket_number}
+                            {getTicketCode(barberIndex, bq.serving.ticket_number)}
                         </div>
                         {bq.serving.customer_name && (
-                            <p className="text-white text-xl font-bold mt-2 truncate max-w-full px-2 drop-shadow-lg">
+                            <p className="text-white text-lg lg:text-xl font-bold mt-2 truncate w-full px-2 text-center drop-shadow-lg min-w-0">
                                 {bq.serving.customer_name}
                             </p>
                         )}
@@ -427,13 +444,14 @@ function BarberColumn({
                 </p>
 
                 {bq.waiting.length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center">
+                    <div className="flex-1 flex items-center justify-center min-h-0">
                         <p className="text-white/50 font-medium text-sm drop-shadow-md">لا يوجد انتظار</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-1.5 overflow-hidden">
-                        {bq.waiting.map((ticket, i) => (
-                            <SmallWaitingRow key={ticket.id} ticket={ticket} rank={i} />
+                    <div className="flex flex-col gap-1.5 overflow-hidden min-h-0">
+                        {/* Slice to max 4 to guarantee no vertical breaking on TV display */}
+                        {bq.waiting.slice(0, 4).map((ticket, i) => (
+                            <SmallWaitingRow key={ticket.id} barberIndex={barberIndex} ticket={ticket} rank={i} />
                         ))}
                     </div>
                 )}
@@ -445,7 +463,7 @@ function BarberColumn({
 // ─────────────────────────────────────────────────────────────────────────────
 // SmallWaitingRow — compact waiting ticket row
 // ─────────────────────────────────────────────────────────────────────────────
-function SmallWaitingRow({ ticket, rank }: { ticket: Ticket; rank: number }) {
+function SmallWaitingRow({ ticket, barberIndex, rank }: { ticket: Ticket; barberIndex: number; rank: number }) {
     const opacity = ['opacity-80', 'opacity-60', 'opacity-40', 'opacity-30'][Math.min(rank, 3)];
     return (
         <div
@@ -455,11 +473,11 @@ function SmallWaitingRow({ ticket, rank }: { ticket: Ticket; rank: number }) {
         px-4 py-3 ${opacity} transition-all shadow-xl
       `}
         >
-            <span className="font-black text-amber-400 text-3xl leading-none drop-shadow-md">
-                {ticket.ticket_number}
+            <span className="font-black text-amber-400 text-2xl lg:text-3xl leading-none drop-shadow-md shrink-0">
+                {getTicketCode(barberIndex, ticket.ticket_number)}
             </span>
             {ticket.customer_name && (
-                <span className="text-white font-bold text-base truncate max-w-[60%] drop-shadow-md">{ticket.customer_name}</span>
+                <span className="text-white font-bold text-sm lg:text-base truncate min-w-0 drop-shadow-md">{ticket.customer_name}</span>
             )}
         </div>
     );

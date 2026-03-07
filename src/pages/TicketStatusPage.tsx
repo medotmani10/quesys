@@ -14,6 +14,7 @@ export default function TicketStatusPage() {
     const [ticket, setTicket] = useState<Ticket | null>(null);
     const [shop, setShop] = useState<Shop | null>(null);
     const [barber, setBarber] = useState<Barber | null>(null);
+    const [barberIndex, setBarberIndex] = useState<number>(-1);
     const [peopleAhead, setPeopleAhead] = useState(0);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
@@ -47,13 +48,14 @@ export default function TicketStatusPage() {
             if (shopData) setShop(shopData as Shop);
 
             // Load all barbers for this shop and find the specific barber
-            const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', t.shop_id);
+            const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', t.shop_id).order('created_at', { ascending: true });
             const bList = (barbersData as Barber[]) || [];
 
             // Find this ticket's barber
             if (t.barber_id) {
-                const b = bList.find(b => b.id === t.barber_id) || null;
-                setBarber(b);
+                const bIndex = bList.findIndex(b => b.id === t.barber_id);
+                setBarberIndex(bIndex);
+                setBarber(bIndex >= 0 ? bList[bIndex] : null);
             }
 
             // Calculate people ahead
@@ -146,7 +148,7 @@ export default function TicketStatusPage() {
         </div>
     );
 
-    const ticketCode = getTicketCode(barber?.name, ticket.ticket_number);
+    const ticketCode = getTicketCode(barberIndex, ticket.ticket_number);
     const isActive = ticket.status === 'waiting' || ticket.status === 'serving';
     const isDone = ticket.status === 'completed' || ticket.status === 'canceled';
 
