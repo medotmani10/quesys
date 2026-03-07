@@ -279,6 +279,10 @@ export default function AdminDashboard() {
           if (bData) setBarbers(bData as Barber[]);
         }
       )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'shops', filter: `id=eq.${shop.id}` },
+        (payload) => setShop(payload.new as Shop)
+      )
       .subscribe();
     return () => { sub.unsubscribe(); };
   };
@@ -523,14 +527,16 @@ export default function AdminDashboard() {
         {/* ─── ADD TICKET ─── */}
         <Sheet open={isManualTicketOpen} onOpenChange={setIsManualTicketOpen}>
           <SheetTrigger asChild>
-            <button className={cn(
-              'w-full rounded-2xl h-14 flex items-center justify-center gap-3 font-black text-lg text-black',
-              'bg-yellow-400 hover:bg-yellow-300 active:scale-[0.98]',
-              'transition-all duration-150 shadow-[0_4px_24px_-4px_rgba(250,204,21,0.5)]',
-              'hover:shadow-[0_8px_32px_-4px_rgba(250,204,21,0.6)]',
-            )}>
+            <button
+              disabled={!shop.is_open}
+              className={cn(
+                'w-full rounded-2xl h-14 flex items-center justify-center gap-3 font-black text-lg transition-all duration-150',
+                shop.is_open
+                  ? 'text-black bg-yellow-400 hover:bg-yellow-300 active:scale-[0.98] shadow-[0_4px_24px_-4px_rgba(250,204,21,0.5)] hover:shadow-[0_8px_32px_-4px_rgba(250,204,21,0.6)]'
+                  : 'text-zinc-500 bg-zinc-800 cursor-not-allowed opacity-80'
+              )}>
               <Plus className="w-5 h-5" />
-              إضافة تذكرة يدوياً
+              {shop.is_open ? 'إضافة تذكرة يدوياً' : 'الصالون مغلق (لا يمكن الإضافة)'}
             </button>
           </SheetTrigger>
           <SheetContent side="bottom" className="rounded-t-[2rem] h-auto max-h-[92vh] bg-zinc-950 border-zinc-800 p-6" dir="rtl">
