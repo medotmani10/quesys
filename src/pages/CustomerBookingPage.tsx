@@ -46,7 +46,7 @@ export default function CustomerBookingPage() {
     if (!shop) return;
     const channel = supabase.channel(`customer_booking_barbers_${shop.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'barbers', filter: `shop_id=eq.${shop.id}` }, async () => {
-        const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', shop.id).eq('is_active', true).order('name');
+        const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', shop.id).eq('is_active', true).order('created_at', { ascending: true });
         if (barbersData) {
           setBarbers(barbersData as Barber[]);
           setSelectedBarber(current => {
@@ -72,7 +72,7 @@ export default function CustomerBookingPage() {
       if (shopError || !shopData) { toast.error('الصالون غير موجود'); navigate('/'); return; }
       setShop(shopData as Shop);
 
-      const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', shopData.id).eq('is_active', true).order('name');
+      const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', shopData.id).eq('is_active', true).order('created_at', { ascending: true });
       const bList = (barbersData as Barber[]) || [];
       setBarbers(bList);
 

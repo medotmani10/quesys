@@ -111,7 +111,7 @@ export default function TVDisplayPage() {
                 .select('*')
                 .eq('shop_id', shopId)
                 .eq('is_active', true)
-                .order('name', { ascending: true });
+                .order('created_at', { ascending: true });
 
             if (barberErr || !barberData) {
                 console.error('[TV] fetchQueue barbers error:', barberErr);
