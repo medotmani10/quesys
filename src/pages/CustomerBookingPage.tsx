@@ -77,11 +77,11 @@ export default function CustomerBookingPage() {
       setBarbers(bList);
 
       // Load queue counts per barber for the visual buttons
-      const { data: waitingTickets } = await supabase.from('tickets').select('barber_id').eq('shop_id', shopData.id).eq('status', 'waiting');
+      const { data: waitingTickets } = await supabase.from('tickets').select('barber_id, people_count').eq('shop_id', shopData.id).eq('status', 'waiting');
       const counts: Record<string, number> = {};
       bList.forEach(b => { counts[b.id] = 0; });
       (waitingTickets || []).forEach((t: any) => {
-        if (t.barber_id && counts[t.barber_id] !== undefined) counts[t.barber_id]++;
+        if (t.barber_id && counts[t.barber_id] !== undefined) counts[t.barber_id] += (t.people_count || 1);
       });
       setBarberQueueCounts(counts);
 
@@ -374,7 +374,7 @@ export default function CustomerBookingPage() {
                           {barber.name}
                         </p>
                         <p className={`text-xs mt-0.5 font-bold ${queueCount === 0 ? 'text-green-400' : 'text-zinc-500'}`}>
-                          {queueCount === 0 ? 'لا انتظار ✓' : `${queueCount} بالانتظار`}
+                          {queueCount === 0 ? 'لا انتظار ✓' : `${queueCount} ${queueCount === 1 ? 'شخص' : 'أشخاص'} بالانتظار`}
                         </p>
                       </div>
                       {isSelected && (

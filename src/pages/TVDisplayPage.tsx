@@ -416,9 +416,16 @@ function BarberColumn({
                             {getTicketCode(barberIndex, bq.serving.ticket_number)}
                         </div>
                         {bq.serving.customer_name && (
-                            <p className="text-white text-lg lg:text-xl font-bold mt-2 truncate w-full px-2 text-center drop-shadow-lg min-w-0">
-                                {bq.serving.customer_name}
-                            </p>
+                            <div className="flex flex-col items-center mt-2">
+                                <p className="text-white text-lg lg:text-xl font-bold truncate w-full px-2 text-center drop-shadow-lg min-w-0">
+                                    {bq.serving.customer_name}
+                                </p>
+                                {bq.serving.people_count > 1 && (
+                                    <span className="mt-1 bg-yellow-400/20 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-2.5 py-1 rounded-md">
+                                        {bq.serving.people_count} أشخاص
+                                    </span>
+                                )}
+                            </div>
                         )}
                     </div>
                 ) : (
@@ -477,7 +484,16 @@ function SmallWaitingRow({ ticket, barberIndex, rank }: { ticket: Ticket; barber
                 {getTicketCode(barberIndex, ticket.ticket_number)}
             </span>
             {ticket.customer_name && (
-                <span className="text-white font-bold text-sm lg:text-base truncate min-w-0 drop-shadow-md">{ticket.customer_name}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                    {ticket.people_count > 1 && (
+                        <span className="bg-yellow-400/20 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-2 py-0.5 rounded-md whitespace-nowrap">
+                            {ticket.people_count} أشخاص
+                        </span>
+                    )}
+                    <span className="text-white font-bold text-sm lg:text-base truncate min-w-0 drop-shadow-md">
+                        {ticket.customer_name}
+                    </span>
+                </div>
             )}
         </div>
     );
