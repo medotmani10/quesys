@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, LogOut, Archive, Users, Scissors, ChevronLeft, X, Loader2, CheckCircle, Settings, Copy, TrendingUp, Printer, Bell, BellOff, List, AlertCircle } from 'lucide-react';
+import { Plus, LogOut, Archive, Users, Scissors, ChevronLeft, X, Loader2, CheckCircle, Settings, Copy, TrendingUp, Printer, Bell, BellOff, List, AlertCircle, MonitorPlay, Smartphone, ExternalLink, Share2, ListX } from 'lucide-react';
 import { toast } from 'sonner';
 import { printThermalTicket } from '@/components/ThermalTicket';
 import { playTicketSound } from '@/lib/notificationSound';
@@ -46,6 +46,87 @@ function StatCard({ label, value, color, sub }: { label: string; value: number; 
         color === 'zinc' && 'text-zinc-200',
       )}>{value}</p>
       {sub && <p className="text-xs text-zinc-600 mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+/* ─── QuickLinks ─── */
+function QuickLinks({ shop }: { shop: Shop }) {
+  const baseUrl = window.location.origin;
+
+  const links = [
+    {
+      title: 'رابط الزبائن',
+      desc: 'للحجز والانضمام للطابور',
+      url: `${baseUrl}/${shop.slug}`,
+      icon: <Users className="w-5 h-5 text-blue-400" />,
+      themeClasses: 'hover:border-blue-500/30 hover:shadow-[0_8px_32px_-4px_rgba(59,130,246,0.15)]',
+      iconClasses: 'bg-blue-500/10 border-blue-500/20'
+    },
+    {
+      title: 'شاشة العرض (TV)',
+      desc: 'لعرض حالة الطابور في الصالون',
+      url: `${baseUrl}/${shop.slug}/tv`,
+      icon: <MonitorPlay className="w-5 h-5 text-purple-400" />,
+      themeClasses: 'hover:border-purple-500/30 hover:shadow-[0_8px_32px_-4px_rgba(168,85,247,0.15)]',
+      iconClasses: 'bg-purple-500/10 border-purple-500/20'
+    },
+    {
+      title: 'تطبيق الحلاقين',
+      desc: 'للوصول إلى لوحة تحكم الحلاق',
+      url: `${baseUrl}/${shop.slug}/barber/login`,
+      icon: <Smartphone className="w-5 h-5 text-emerald-400" />,
+      themeClasses: 'hover:border-emerald-500/30 hover:shadow-[0_8px_32px_-4px_rgba(16,185,129,0.15)]',
+      iconClasses: 'bg-emerald-500/10 border-emerald-500/20'
+    }
+  ];
+
+  const copyLink = (url: string) => {
+    navigator.clipboard.writeText(url);
+    toast.success('تم نسخ الرابط بنجاح ✓');
+  };
+
+  const shareLink = async (url: string, title: string, text: string) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text, url });
+      } catch (err) {
+        console.log('Error sharing', err);
+      }
+    } else {
+      copyLink(url);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {links.map((link, i) => (
+        <div key={i} className={cn(
+          'flex items-center justify-between p-4 rounded-2xl border bg-zinc-950 transition-all duration-300 hover:-translate-y-1 group border-zinc-800/80',
+          link.themeClasses
+        )}>
+          <div className="flex items-center gap-3">
+            <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center border shrink-0', link.iconClasses)}>
+              {link.icon}
+            </div>
+            <div>
+              <p className="font-bold text-white text-sm">{link.title}</p>
+              <p className="text-xs text-zinc-500">{link.desc}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => shareLink(link.url, link.title, link.desc)} className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all" title="مشاركة الرابط">
+              <Share2 className="w-4 h-4" />
+            </button>
+            <button onClick={() => copyLink(link.url)} className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all" title="نسخ الرابط">
+              <Copy className="w-4 h-4" />
+            </button>
+            <a href={link.url} target="_blank" rel="noreferrer" className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all" title="فتح الرابط">
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -365,11 +446,23 @@ export default function AdminDashboard() {
     if (error) toast.error('فشل في إنهاء الخدمة'); else toast.success('تم إنهاء الخدمة ✓');
   };
 
-  const copyShopLink = () => {
+  const resetQueue = async () => {
     if (!shop) return;
-    navigator.clipboard.writeText(`${window.location.origin}/${shop.slug}`);
-    toast.success('تم نسخ الرابط');
+    const { error } = await supabase
+      .from('tickets')
+      .update({ status: 'canceled' })
+      .eq('shop_id', shop.id)
+      .in('status', ['waiting', 'serving']);
+
+    if (error) {
+      toast.error('فشل تصفير الطابور');
+    } else {
+      toast.success('تم تصفير الطابور بنجاح');
+      loadTickets();
+    }
   };
+
+
 
   const getBarberTickets = (barberId: string | null, status: string) => tickets.filter(t => t.barber_id === barberId && t.status === status);
   const getCurrentServing = (barberId: string) => tickets.find(t => t.barber_id === barberId && t.status === 'serving');
@@ -418,10 +511,6 @@ export default function AdminDashboard() {
               }
               <div>
                 <h1 className="font-black text-white text-base leading-tight truncate max-w-[150px] sm:max-w-[200px]">{shop.name}</h1>
-                <button onClick={copyShopLink}
-                  className="flex items-center gap-1 text-xs text-zinc-500 hover:text-yellow-400 transition-colors font-semibold">
-                  <Copy className="w-3 h-3" /> نسخ الرابط
-                </button>
               </div>
             </div>
 
@@ -489,6 +578,33 @@ export default function AdminDashboard() {
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <button
+                    className="w-10 h-10 md:w-9 md:h-9 rounded-xl flex items-center justify-center border border-zinc-800 text-zinc-500 hover:text-red-400 hover:border-red-500/30 transition-all bg-zinc-950 hover:bg-zinc-900"
+                    title="تصفير الطابور"
+                  >
+                    <ListX className="w-5 h-5 md:w-4 md:h-4" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-zinc-950 border border-zinc-800 text-white rounded-[2rem] w-[90vw] max-w-[400px]" dir="rtl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="font-black text-xl text-white text-right flex items-center gap-2">
+                      <ListX className="w-6 h-6 text-red-500" /> تصفير الطابور
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-zinc-400 text-right mt-2 font-semibold">
+                      هل أنت متأكد أنك تريد تصفير الطابور بالكامل؟ سيتم إلغاء جميع التذاكر الحالية وتفريغ الانتظار ولن تتمكن من التراجع عن هذا الإجراء.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="flex-row items-center gap-3 mt-4 sm:justify-start">
+                    <AlertDialogCancel className="mt-0 flex-1 rounded-xl border-zinc-800 bg-black/50 text-white hover:bg-white/5 hover:text-white font-bold">إلغاء</AlertDialogCancel>
+                    <AlertDialogAction onClick={resetQueue} className="flex-1 rounded-xl bg-red-500 text-white hover:bg-red-600 font-bold border-none shadow-lg shadow-red-500/20">
+                      نعم، صفّر الطابور
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
                     className="w-10 h-10 md:w-9 md:h-9 rounded-xl flex items-center justify-center border border-zinc-800 text-zinc-500 hover:text-red-400 hover:border-red-500/30 transition-all bg-zinc-950 hover:bg-zinc-900">
                     <LogOut className="w-5 h-5 md:w-4 md:h-4" />
                   </button>
@@ -534,6 +650,9 @@ export default function AdminDashboard() {
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
           </span>
         </div>
+
+        {/* ─── QUICK LINKS ─── */}
+        <QuickLinks shop={shop} />
 
         {/* ─── ADD TICKET ─── */}
         <Sheet open={isManualTicketOpen} onOpenChange={setIsManualTicketOpen}>
