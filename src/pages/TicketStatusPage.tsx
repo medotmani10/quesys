@@ -72,14 +72,19 @@ export default function TicketStatusPage() {
     const calculatePeopleAhead = async (t: Ticket) => {
         let query = supabase
             .from('tickets')
-            .select('id', { count: 'exact' })
+            .select('people_count')
             .eq('shop_id', t.shop_id)
             .eq('status', 'waiting')
             .lt('created_at', t.created_at);
 
         if (t.barber_id) query = query.eq('barber_id', t.barber_id);
-        const { count } = await query;
-        setPeopleAhead(count || 0);
+        const { data } = await query;
+        if (data) {
+            const total = data.reduce((sum, row) => sum + (row.people_count || 1), 0);
+            setPeopleAhead(total);
+        } else {
+            setPeopleAhead(0);
+        }
     };
 
     const subscribeToUpdates = () => {

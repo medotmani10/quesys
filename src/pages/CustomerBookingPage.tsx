@@ -97,10 +97,15 @@ export default function CustomerBookingPage() {
   };
 
   const calculatePeopleAhead = async (ticket: Ticket, shopId: string) => {
-    let query = supabase.from('tickets').select('id', { count: 'exact' }).eq('shop_id', shopId).eq('status', 'waiting').lt('created_at', ticket.created_at);
+    let query = supabase.from('tickets').select('people_count').eq('shop_id', shopId).eq('status', 'waiting').lt('created_at', ticket.created_at);
     if (ticket.barber_id) query = query.eq('barber_id', ticket.barber_id);
-    const { count } = await query;
-    setPeopleAhead(count || 0);
+    const { data } = await query;
+    if (data) {
+      const total = data.reduce((sum, row) => sum + (row.people_count || 1), 0);
+      setPeopleAhead(total);
+    } else {
+      setPeopleAhead(0);
+    }
   };
 
   const subscribeToTicketUpdates = () => {
