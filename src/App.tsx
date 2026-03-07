@@ -9,6 +9,8 @@ import ArchivePage from '@/pages/ArchivePage';
 import AdminSettingsPage from '@/pages/AdminSettingsPage';
 import TicketStatusPage from '@/pages/TicketStatusPage';
 import TVDisplayPage from '@/pages/TVDisplayPage';
+import BarberLoginPage from '@/pages/BarberLoginPage';
+import BarberDashboard from '@/pages/BarberDashboard';
 
 // Detect if the app is running as an installed PWA (standalone mode)
 const isPWA = window.matchMedia('(display-mode: standalone)').matches
@@ -39,6 +41,10 @@ function App() {
               - In browser → show the customer booking page */}
           {/* TV display page — must be BEFORE the /:slug catch-all */}
           <Route path="/:slug/tv" element={<TVDisplayPage />} />
+
+          {/* Barber PWA pages */}
+          <Route path="/:slug/barber/login" element={<BarberLoginPage />} />
+          <Route path="/:slug/barber" element={<BarberDashboard />} />
 
           <Route
             path="/:slug"

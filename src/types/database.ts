@@ -60,6 +60,7 @@ export interface Barber {
   shop_id: string
   name: string
   is_active: boolean
+  auth_id?: string | null
   created_at: string
 }
 

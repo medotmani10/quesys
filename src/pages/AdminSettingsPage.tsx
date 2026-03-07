@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { Shop, Barber } from '@/types/database';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ export default function AdminSettingsPage() {
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const [newBarberName, setNewBarberName] = useState('');
+    const [newBarberPassword, setNewBarberPassword] = useState('');
     const [currentUser, setCurrentUser] = useState<any>(null);
 
     useEffect(() => {
@@ -161,15 +163,39 @@ export default function AdminSettingsPage() {
     };
 
     const addBarber = async () => {
-        if (!shop || !newBarberName.trim()) return;
+        if (!shop || !newBarberName.trim() || !newBarberPassword.trim()) return;
 
+        setSaving(true);
         try {
+            // Generate deterministic pseudo email from Arabic/English username
+            const rawName = newBarberName.trim();
+            const safeName = btoa(encodeURIComponent(rawName)).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            const pseudoEmail = `${safeName}@${shop.slug}.com`;
+
+            // Create a temporary client to avoid overwriting the admin's session
+            const tempClient = createClient(
+                import.meta.env.VITE_SUPABASE_URL,
+                import.meta.env.VITE_SUPABASE_ANON_KEY,
+                { auth: { persistSession: false, autoRefreshToken: false } }
+            );
+
+            // 1. Sign up the barber in Supabase Auth
+            const { data: authData, error: authError } = await tempClient.auth.signUp({
+                email: pseudoEmail,
+                password: newBarberPassword.trim()
+            });
+
+            if (authError) throw authError;
+            if (!authData.user) throw new Error('فشل إنشاء حساب الحلاق');
+
+            // 2. Insert into barbers table
             const { data, error } = await supabase
                 .from('barbers')
                 .insert({
                     shop_id: shop.id,
                     name: newBarberName.trim(),
-                    is_active: true
+                    is_active: true,
+                    auth_id: authData.user.id
                 })
                 .select()
                 .single();
@@ -178,9 +204,13 @@ export default function AdminSettingsPage() {
 
             setBarbers([...barbers, data]);
             setNewBarberName('');
-            toast.success('تم إضافة الحلاق بنجاح');
-        } catch (error) {
-            toast.error('فشل إضافة الحلاق');
+            setNewBarberPassword('');
+            toast.success('تم إضافة الحلاق وإنشاء حسابه بنجاح');
+        } catch (error: any) {
+            console.error('Add barber error:', error);
+            toast.error(error.message || 'فشل إضافة الحلاق');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -342,11 +372,18 @@ export default function AdminSettingsPage() {
                     </CardHeader>
                     <CardContent className="p-8 space-y-6 relative z-10">
                         {/* Add Barber */}
-                        <div className="flex gap-4">
+                        <div className="flex flex-col sm:flex-row gap-4">
                             <Input
                                 value={newBarberName}
                                 onChange={(e) => setNewBarberName(e.target.value)}
                                 placeholder="اسم الحلاق الجديد..."
+                                className="flex-1 rounded-2xl h-14 bg-black/50 border-zinc-800 focus-visible:ring-yellow-400 focus-visible:border-yellow-400/50 text-white placeholder:text-zinc-700 text-lg transition-all hover:border-zinc-700"
+                            />
+                            <Input
+                                value={newBarberPassword}
+                                onChange={(e) => setNewBarberPassword(e.target.value)}
+                                placeholder="إنشاء كلمة مرور للحلاق..."
+                                type="password"
                                 className="flex-1 rounded-2xl h-14 bg-black/50 border-zinc-800 focus-visible:ring-yellow-400 focus-visible:border-yellow-400/50 text-white placeholder:text-zinc-700 text-lg transition-all hover:border-zinc-700"
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') addBarber();
@@ -354,11 +391,10 @@ export default function AdminSettingsPage() {
                             />
                             <Button
                                 onClick={addBarber}
-                                disabled={!newBarberName.trim()}
-                                className="rounded-2xl h-14 px-8 bg-yellow-400 hover:bg-yellow-500 text-black font-bold shadow-glow transition-all"
+                                disabled={!newBarberName.trim() || !newBarberPassword.trim() || saving}
+                                className="sm:w-32 rounded-2xl h-14 bg-yellow-400 hover:bg-yellow-500 text-black font-bold shadow-glow transition-all disabled:opacity-50 flex items-center justify-center"
                             >
-                                <Plus className="w-5 h-5 ml-2" />
-                                إضافة
+                                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Plus className="w-5 h-5 ml-1" /> إضافة</>}
                             </Button>
                         </div>
 
