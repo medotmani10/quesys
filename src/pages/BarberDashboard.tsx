@@ -141,12 +141,15 @@ export default function BarberDashboard() {
         if (!servingTicket || !shop || !barber) return;
         setActionLoading(true);
         try {
-            const { error } = await supabase
-                .from('tickets')
-                .update({ status: 'completed' })
-                .eq('id', servingTicket.id);
+            const { data: success, error } = await supabase.rpc('barber_complete_service', {
+                p_ticket_id: servingTicket.id,
+                p_barber_id: barber.id,
+                p_shop_id: shop.id
+            });
 
             if (error) throw error;
+            if (!success) throw new Error('لم يتم تحديث أي سجل');
+
             toast.success('تم إنهاء الخدمة بنجاح');
             setServingTicket(null);
             await fetchTickets(shop.id, barber.id);
