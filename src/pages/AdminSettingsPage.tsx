@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Store, MapPin, Upload, ArrowRight, Save, Plus, Scissors, Loader2, Smartphone } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Store, MapPin, Upload, ArrowRight, Save, Plus, Scissors, Loader2, Smartphone, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { compressImage } from '@/lib/imageCompression';
 
@@ -26,6 +26,14 @@ export default function AdminSettingsPage() {
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const [newBarberName, setNewBarberName] = useState('');
     const [newBarberPassword, setNewBarberPassword] = useState('');
+
+    // Edit Barber State
+    const [editingBarber, setEditingBarber] = useState<Barber | null>(null);
+    const [editBarberName, setEditBarberName] = useState('');
+    const [editBarberPassword, setEditBarberPassword] = useState('');
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editSaving, setEditSaving] = useState(false);
+
     const [currentUser, setCurrentUser] = useState<any>(null);
 
     useEffect(() => {
@@ -211,6 +219,97 @@ export default function AdminSettingsPage() {
             toast.error(error.message || 'فشل إضافة الحلاق');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const openEditBarberModal = (barber: Barber) => {
+        setEditingBarber(barber);
+        setEditBarberName(barber.name);
+        setEditBarberPassword(''); // Start blank, only require if they want to change it
+        setIsEditModalOpen(true);
+    };
+
+    const handleEditBarber = async () => {
+        if (!editingBarber || !shop || !editBarberName.trim()) return;
+
+        setEditSaving(true);
+        try {
+            let authIdToSave = editingBarber.auth_id;
+
+            // If a new password is provided, or the name changed (affecting pseudo-email), we MUST create a new Auth user
+            if (editBarberPassword.trim() || editBarberName.trim() !== editingBarber.name) {
+                // Generate new pseudo email
+                const rawName = editBarberName.trim();
+                const safeName = btoa(encodeURIComponent(rawName)).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                const pseudoEmail = `${safeName}@${shop.slug}.com`;
+
+                // Password is required if we are generating a new auth user
+                const passwordToUse = editBarberPassword.trim() || 'defaultpassword123!';
+
+                const tempClient = createClient(
+                    import.meta.env.VITE_SUPABASE_URL,
+                    import.meta.env.VITE_SUPABASE_ANON_KEY,
+                    { auth: { persistSession: false, autoRefreshToken: false } }
+                );
+
+                const { data: authData, error: authError } = await tempClient.auth.signUp({
+                    email: pseudoEmail,
+                    password: passwordToUse
+                });
+
+                if (authError) throw authError;
+                if (!authData.user) throw new Error('فشل إنشاء التوثيق الجديد للحلاق');
+
+                authIdToSave = authData.user.id;
+            }
+
+            // Update the barber record
+            const { error } = await supabase
+                .from('barbers')
+                .update({
+                    name: editBarberName.trim(),
+                    auth_id: authIdToSave
+                })
+                .eq('id', editingBarber.id);
+
+            if (error) throw error;
+
+            toast.success('تم تحديث بيانات الحلاق بنجاح');
+
+            // Update local state
+            setBarbers(barbers.map(b => b.id === editingBarber.id ? { ...b, name: editBarberName.trim(), auth_id: authIdToSave } : b));
+            setIsEditModalOpen(false);
+            setEditingBarber(null);
+
+        } catch (error: any) {
+            console.error('Edit barber error:', error);
+            toast.error(error.message || 'فشل تحديث الحلاق');
+        } finally {
+            setEditSaving(false);
+        }
+    };
+
+    const handleDeleteBarber = async (barberId: string) => {
+        if (!confirm('هل أنت متأكد من حذف هذا الحلاق؟ قد لا تتمكن من استرجاع بياناته.')) return;
+
+        setEditSaving(true);
+        try {
+            const { error } = await supabase
+                .from('barbers')
+                .delete()
+                .eq('id', barberId);
+
+            if (error) throw error;
+
+            setBarbers(barbers.filter(b => b.id !== barberId));
+            toast.success('تم حذف الحلاق بنجاح');
+            setIsEditModalOpen(false);
+            setEditingBarber(null);
+        } catch (error: any) {
+            console.error('Delete barber error:', error);
+            toast.error('فشل حذف الحلاق - تأكد من عدم وجود حجوزات نشطة مرتبطة به');
+        } finally {
+            setEditSaving(false);
         }
     };
 
@@ -412,12 +511,26 @@ export default function AdminSettingsPage() {
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-4">
-                                        <Switch
-                                            checked={barber.is_active}
-                                            onCheckedChange={() => toggleBarberStatus(barber.id, barber.is_active)}
-                                            className="data-[state=checked]:bg-green-500"
-                                        />
+                                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => openEditBarberModal(barber)}
+                                            className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-yellow-400 hover:border-yellow-400/50 hover:bg-yellow-400/10 transition-all"
+                                            title="تعديل بيانات الحلاق"
+                                        >
+                                            <Edit2 className="w-5 h-5" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => toggleBarberStatus(barber.id, barber.is_active)}
+                                            className={`rounded-xl border h-10 px-4 font-bold transition-all w-full sm:w-auto ${barber.is_active
+                                                ? 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                                                : 'bg-green-500/10 border-green-500/30 text-green-500 hover:bg-green-500 hover:text-black'
+                                                }`}
+                                        >
+                                            {barber.is_active ? 'إيقاف' : 'تفعيل'}
+                                        </Button>
                                     </div>
                                 </div>
                             ))}
@@ -432,6 +545,76 @@ export default function AdminSettingsPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Edit Barber Modal */}
+            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                <DialogContent className="bg-zinc-950 border-zinc-800 text-white sm:max-w-[425px]" dir="rtl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black text-white flex items-center gap-2">
+                            <Edit2 className="w-5 h-5 text-yellow-400" />
+                            تعديل بيانات الحلاق
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-400 mt-2">
+                            تغيير الاسم أو كلمة المرور سيؤدي لإنشاء تسجيل دخول جديد.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="grid gap-6 py-4">
+                        <div className="space-y-2">
+                            <Label className="text-zinc-300 font-bold">اسم الحلاق</Label>
+                            <Input
+                                value={editBarberName}
+                                onChange={(e) => setEditBarberName(e.target.value)}
+                                className="bg-black/50 border-zinc-800 focus-visible:ring-yellow-400 text-white"
+                                placeholder="محمد، أحمد..."
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-zinc-300 font-bold">كلمة المرور الجديدة (اختياري للصيانة فقط)</Label>
+                            <Input
+                                value={editBarberPassword}
+                                onChange={(e) => setEditBarberPassword(e.target.value)}
+                                placeholder="اتركه فارغاً إذا لم ترد التغيير..."
+                                type="password"
+                                className="bg-black/50 border-zinc-800 focus-visible:ring-yellow-400 text-white"
+                            />
+                            <p className="text-xs text-zinc-500 mt-1">إذا قمت بتغيير الاسم ولم تضع كلمة مرور، سيتم توليد كلمة مرور افتراضية "defaultpassword123!"</p>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="mr-auto w-full flex-col sm:flex-row gap-3 sm:space-x-4 sm:space-x-reverse">
+                        <div className="flex w-full gap-3">
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                className="flex-1 font-bold"
+                                onClick={() => editingBarber && handleDeleteBarber(editingBarber.id)}
+                                disabled={editSaving}
+                            >
+                                {editSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Trash2 className="w-4 h-4 ml-2" /> حذف</>}
+                            </Button>
+
+                            <Button
+                                type="button"
+                                className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-black font-bold"
+                                onClick={handleEditBarber}
+                                disabled={editSaving || !editBarberName.trim()}
+                            >
+                                {editSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'حفظ التغييرات'}
+                            </Button>
+                        </div>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            className="w-full sm:w-auto mt-2 sm:mt-0 opacity-50 hover:opacity-100"
+                            onClick={() => setIsEditModalOpen(false)}
+                            disabled={editSaving}
+                        >
+                            إلغاء
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
