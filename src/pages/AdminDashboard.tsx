@@ -573,7 +573,7 @@ export default function AdminDashboard() {
                     <SelectValue placeholder="اختر الحلاق..." />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-900 border-zinc-700 text-white rounded-xl">
-                    {barbers.filter(b => b.is_active).map((b) => (
+                    {barbers.filter(b => b.is_active !== false).map((b) => (
                       <SelectItem key={b.id} value={b.id} className="focus:bg-yellow-400/10 focus:text-yellow-400 cursor-pointer">{b.name}</SelectItem>
                     ))}
                   </SelectContent>

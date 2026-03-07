@@ -347,7 +347,7 @@ export default function CustomerBookingPage() {
                 <span className="text-red-400 text-xs font-black">*</span>
               </Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {barbers.map((barber) => {
+                {barbers.filter(b => b.is_active !== false).map((barber) => {
                   const isSelected = selectedBarber === barber.id;
                   const queueCount = barberQueueCounts[barber.id] ?? 0;
                   return (
