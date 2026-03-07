@@ -272,6 +272,13 @@ export default function AdminDashboard() {
         { event: 'DELETE', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` },
         () => loadTickets()
       )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'barbers', filter: `shop_id=eq.${shop.id}` },
+        async () => {
+          const { data: bData } = await supabase.from('barbers').select('*').eq('shop_id', shop.id).order('name');
+          if (bData) setBarbers(bData as Barber[]);
+        }
+      )
       .subscribe();
     return () => { sub.unsubscribe(); };
   };
@@ -566,7 +573,7 @@ export default function AdminDashboard() {
                     <SelectValue placeholder="اختر الحلاق..." />
                   </SelectTrigger>
                   <SelectContent className="bg-zinc-900 border-zinc-700 text-white rounded-xl">
-                    {barbers.map((b) => (
+                    {barbers.filter(b => b.is_active).map((b) => (
                       <SelectItem key={b.id} value={b.id} className="focus:bg-yellow-400/10 focus:text-yellow-400 cursor-pointer">{b.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -627,29 +634,41 @@ export default function AdminDashboard() {
               <List className="w-3.5 h-3.5" />
               التذاكر
             </TabsTrigger>
-            {barbers.map((barber) => (
-              <TabsTrigger key={barber.id} value={barber.id}
-                className="flex-1 min-w-fit rounded-lg font-black text-sm text-zinc-500 data-[state=active]:bg-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_2px_8px_rgba(250,204,21,0.4)] transition-all">
-                {barber.name}
-              </TabsTrigger>
-            ))}
+            {barbers.map((barber) => {
+              // Only show tabs for active barbers, OR inactive barbers that still have active tickets
+              const hasTickets = tickets.some(t => t.barber_id === barber.id && (t.status === 'serving' || t.status === 'waiting'));
+              if (!barber.is_active && !hasTickets) return null;
+
+              return (
+                <TabsTrigger key={barber.id} value={barber.id}
+                  className="flex-1 min-w-fit rounded-lg font-black text-sm text-zinc-500 data-[state=active]:bg-yellow-400 data-[state=active]:text-black data-[state=active]:shadow-[0_2px_8px_rgba(250,204,21,0.4)] transition-all flex items-center gap-1">
+                  {!barber.is_active && <AlertCircle className="w-3 h-3 text-red-500" />}
+                  {barber.name}
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
 
           {/* ─── ALL tab ─── */}
           <TabsContent value="all" className="mt-0 animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {barbers.map((barber) => (
-                <BarberCard
-                  key={barber.id}
-                  barber={barber}
-                  serving={getCurrentServing(barber.id)}
-                  waiting={getBarberTickets(barber.id, 'waiting')}
-                  processingBarber={processingBarber}
-                  onNext={() => handleNextCustomer(barber.id)}
-                  onCancel={cancelTicket}
-                  onFinish={finishTicket}
-                />
-              ))}
+              {barbers.map((barber) => {
+                const hasTickets = tickets.some(t => t.barber_id === barber.id && (t.status === 'serving' || t.status === 'waiting'));
+                if (!barber.is_active && !hasTickets) return null;
+
+                return (
+                  <BarberCard
+                    key={barber.id}
+                    barber={barber}
+                    serving={getCurrentServing(barber.id)}
+                    waiting={getBarberTickets(barber.id, 'waiting')}
+                    processingBarber={processingBarber}
+                    onNext={() => handleNextCustomer(barber.id)}
+                    onCancel={cancelTicket}
+                    onFinish={finishTicket}
+                  />
+                );
+              })}
             </div>
           </TabsContent>
 
@@ -723,6 +742,9 @@ export default function AdminDashboard() {
 
           {/* ─── Per-barber tabs ─── */}
           {barbers.map((barber) => {
+            const hasTickets = tickets.some(t => t.barber_id === barber.id && (t.status === 'serving' || t.status === 'waiting'));
+            if (!barber.is_active && !hasTickets) return null;
+
             const serving = getCurrentServing(barber.id);
             const waiting = getBarberTickets(barber.id, 'waiting');
             return (

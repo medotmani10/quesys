@@ -54,6 +54,26 @@ export default function CustomerBookingPage() {
     if (activeTicket) return subscribeToTicketUpdates();
   }, [activeTicket?.id]);
 
+  useEffect(() => {
+    if (!shop) return;
+    const channel = supabase.channel(`customer_booking_barbers_${shop.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'barbers', filter: `shop_id=eq.${shop.id}` }, async () => {
+        const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', shop.id).eq('is_active', true).order('name');
+        if (barbersData) {
+          setBarbers(barbersData as Barber[]);
+          setSelectedBarber(current => {
+            if (current && !barbersData.find(b => b.id === current)) {
+              toast.error('عذراً، هذا الحلاق لم يعد متاحاً الآن');
+              return '';
+            }
+            return current;
+          });
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [shop?.id]);
+
   const loadShopData = async () => {
     if (!slug) return;
     try {
