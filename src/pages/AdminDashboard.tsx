@@ -226,12 +226,12 @@ function BarberCard({
         <div className="flex-1 min-w-0">
           <h3 className="font-black text-white text-base leading-tight truncate">{barber.name}</h3>
           <p className={cn('text-xs font-semibold', serving ? 'text-green-400' : 'text-zinc-500')}>
-            {serving ? 'يخدم عميلاً' : `${waiting.length} بالانتظار`}
+            {serving ? 'يخدم عميلاً' : `${waiting.reduce((acc, t) => acc + (t.people_count || 1), 0)} بالانتظار`}
           </p>
         </div>
         {waiting.length > 0 && (
           <span className="bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-xs font-black px-2.5 py-1 rounded-full">
-            {waiting.length}
+            {waiting.reduce((acc, t) => acc + (t.people_count || 1), 0)}
           </span>
         )}
       </div>
@@ -485,7 +485,7 @@ export default function AdminDashboard() {
 
   if (!shop) return null;
 
-  const waitingCount = tickets.filter(t => t.status === 'waiting').length;
+  const waitingCount = tickets.filter(t => t.status === 'waiting').reduce((acc, t) => acc + (t.people_count || 1), 0);
   const servingCount = tickets.filter(t => t.status === 'serving').length;
 
   /* ─── Render ─── */
@@ -937,7 +937,7 @@ export default function AdminDashboard() {
                         <Users className="w-5 h-5 text-yellow-400" /> قائمة الانتظار — {barber.name}
                       </h4>
                       <span className="bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-xs font-black px-3 py-1 rounded-full">
-                        {waiting.length} عميل
+                        {waiting.reduce((acc, t) => acc + (t.people_count || 1), 0)} أشخاص
                       </span>
                     </div>
 

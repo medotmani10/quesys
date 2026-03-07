@@ -315,7 +315,7 @@ export default function BarberDashboard() {
                 <div className="pt-8">
                     <h3 className="font-black text-lg text-white mb-4 flex items-center gap-2">
                         <Clock className="w-5 h-5 text-zinc-500" />
-                        طابور الحجز الخاص بي ({waitingTickets.length})
+                        طابور الحجز الخاص بي (العدد: {waitingTickets.reduce((acc, t) => acc + (t.people_count || 1), 0)} أشخاص)
                     </h3>
 
                     <div className="space-y-3">

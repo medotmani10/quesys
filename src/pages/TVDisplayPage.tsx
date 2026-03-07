@@ -349,7 +349,7 @@ export default function TVDisplayPage() {
                     <span className="w-1.5 h-1.5 rounded-full bg-white/50" />
                     <span>{queues.length} حلاق نشط</span>
                     <span className="w-1.5 h-1.5 rounded-full bg-white/50" />
-                    <span>{queues.reduce((s, bq) => s + bq.waiting.length, 0)} في الانتظار</span>
+                    <span>{queues.reduce((s, bq) => s + bq.waiting.reduce((acc, t) => acc + (t.people_count || 1), 0), 0)} شخص في الانتظار</span>
                 </div>
             </footer>
         </div>
