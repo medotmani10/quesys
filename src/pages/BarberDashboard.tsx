@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Scissors, LogOut, CheckCircle, BellRing, User, Clock, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTicketCode } from './CustomerBookingPage';
+import BarberInstallPrompt from '@/components/BarberInstallPrompt';
 
 export default function BarberDashboard() {
     const { slug } = useParams<{ slug: string }>();
@@ -201,6 +202,7 @@ export default function BarberDashboard() {
 
     return (
         <div className="min-h-[100dvh] bg-black text-white flex flex-col pt-4 pb-24 px-4 sm:p-6" dir="rtl">
+            <BarberInstallPrompt />
 
             {/* ─── HEADER ─── */}
             <header className="flex items-center justify-between mb-8 pb-4 border-b border-zinc-800">

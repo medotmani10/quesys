@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Scissors, Loader2, ChevronLeft, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
+import BarberInstallPrompt from '@/components/BarberInstallPrompt';
 
 export default function BarberLoginPage() {
     const { slug } = useParams<{ slug: string }>();
@@ -103,6 +104,7 @@ export default function BarberLoginPage() {
 
     return (
         <div className="min-h-[100dvh] bg-black flex flex-col items-center justify-center p-6 relative overflow-hidden" dir="rtl">
+            <BarberInstallPrompt />
             {/* Background decoration */}
             <div className="absolute top-0 left-0 w-full h-1 bg-yellow-400" />
             <div className="absolute -top-24 -left-24 w-64 h-64 bg-yellow-400/10 rounded-full blur-3xl" />
