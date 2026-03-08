@@ -4,7 +4,8 @@ import { supabase } from '@/lib/supabase';
 import type { Shop, Barber, Ticket } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Scissors, LogOut, CheckCircle, BellRing, User, Clock, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Scissors, LogOut, CheckCircle, BellRing, User, Clock, Loader2, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTicketCode } from './CustomerBookingPage';
 import BarberInstallPrompt from '@/components/BarberInstallPrompt';
@@ -21,6 +22,7 @@ export default function BarberDashboard() {
 
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
+    const [selectedTicketDetails, setSelectedTicketDetails] = useState<Ticket | null>(null);
 
     useEffect(() => {
         loadData();
@@ -320,7 +322,11 @@ export default function BarberDashboard() {
 
                     <div className="space-y-3">
                         {waitingTickets.map((ticket, idx) => (
-                            <div key={ticket.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl flex items-center justify-between">
+                            <div
+                                key={ticket.id}
+                                onClick={() => setSelectedTicketDetails(ticket)}
+                                className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl flex items-center justify-between cursor-pointer hover:bg-zinc-800 transition-colors"
+                            >
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-full bg-yellow-400/10 text-yellow-400 font-bold flex items-center justify-center text-sm border border-yellow-400/20">
                                         {idx + 1}
@@ -343,6 +349,56 @@ export default function BarberDashboard() {
                 </div>
 
             </div>
+
+            {/* Customer Contact Dialog */}
+            <Dialog open={!!selectedTicketDetails} onOpenChange={(o) => !o && setSelectedTicketDetails(null)}>
+                <DialogContent className="bg-zinc-950 border-zinc-800 text-white rounded-2xl w-[90vw] max-w-sm p-6" dir="rtl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black text-right text-yellow-400">تفاصيل الزبون</DialogTitle>
+                        <DialogDescription className="text-zinc-400 text-sm text-right mt-1">
+                            رقم التذكرة: {selectedTicketDetails ? getTicketCode(barberIndex, selectedTicketDetails.ticket_number) : ''}
+                        </DialogDescription>
+                    </DialogHeader>
+                    {selectedTicketDetails && (
+                        <div className="space-y-4 mt-2">
+                            <div className="bg-black/50 p-4 rounded-xl border border-zinc-800/80 items-center justify-between">
+                                <p className="text-zinc-500 text-xs font-bold mb-1">الاسم الكامل</p>
+                                <p className="text-lg font-black text-white">{selectedTicketDetails.customer_name}</p>
+                                {selectedTicketDetails.people_count > 1 && (
+                                    <p className="mt-2 text-yellow-400 text-sm font-bold bg-yellow-400/10 px-2 py-1 rounded inline-block">
+                                        {selectedTicketDetails.people_count} أشخاص
+                                    </p>
+                                )}
+                            </div>
+
+                            {selectedTicketDetails.phone_number ? (
+                                <a
+                                    href={`tel:${selectedTicketDetails.phone_number}`}
+                                    className="flex items-center gap-3 w-full bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 p-4 rounded-xl transition-all duration-200 cursor-pointer"
+                                    onClick={() => setSelectedTicketDetails(null)}
+                                >
+                                    <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+                                        <Phone className="w-5 h-5 pointer-events-none" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold opacity-80 mb-0.5 pointer-events-none">رقم الهاتف (انقر للاتصال)</p>
+                                        <p className="text-lg font-black tracking-wide pointer-events-none" dir="ltr">{selectedTicketDetails.phone_number}</p>
+                                    </div>
+                                </a>
+                            ) : (
+                                <div className="flex items-center gap-3 w-full bg-zinc-900 border border-zinc-800 text-zinc-500 p-4 rounded-xl">
+                                    <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center shrink-0">
+                                        <Phone className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold">لا يوجد رقم هاتف</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

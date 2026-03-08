@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Plus, LogOut, Archive, Users, Scissors, ChevronLeft, X, Loader2, CheckCircle, Settings, Copy, TrendingUp, Printer, Bell, BellOff, List, AlertCircle, MonitorPlay, Smartphone, ExternalLink, Share2, ListX } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Plus, LogOut, Archive, Users, Scissors, ChevronLeft, X, Loader2, CheckCircle, Settings, Copy, TrendingUp, Printer, Bell, BellOff, List, AlertCircle, MonitorPlay, Smartphone, ExternalLink, Share2, ListX, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { printThermalTicket } from '@/components/ThermalTicket';
 import { playTicketSound } from '@/lib/notificationSound';
@@ -132,7 +133,7 @@ function QuickLinks({ shop }: { shop: Shop }) {
 }
 
 /* ─── TicketRow ─── */
-function TicketRow({ ticket, barberIndex, onCancel }: { ticket: Ticket; barberIndex?: number; onCancel: () => void }) {
+function TicketRow({ ticket, barberIndex, onCancel, onClick }: { ticket: Ticket; barberIndex?: number; onCancel: () => void; onClick?: () => void }) {
   const [pressing, setPressing] = useState(false);
   const code = getTicketCode(barberIndex, ticket.ticket_number);
   return (
@@ -140,8 +141,10 @@ function TicketRow({ ticket, barberIndex, onCancel }: { ticket: Ticket; barberIn
       className={cn(
         'flex items-center justify-between px-4 py-3 rounded-xl border border-zinc-800',
         'bg-black/60 hover:bg-zinc-900/80 hover:border-yellow-400/20 transition-all duration-200 group/row',
+        onClick && 'cursor-pointer',
         pressing && 'scale-[0.98]',
       )}
+      onClick={onClick}
       onMouseDown={() => setPressing(true)}
       onMouseUp={() => setPressing(false)}
       onMouseLeave={() => setPressing(false)}
@@ -156,7 +159,7 @@ function TicketRow({ ticket, barberIndex, onCancel }: { ticket: Ticket; barberIn
         </div>
       </div>
       <button
-        onClick={onCancel}
+        onClick={(e) => { e.stopPropagation(); onCancel(); }}
         className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
       >
         <X className="w-3.5 h-3.5" />
@@ -197,7 +200,7 @@ function ServingBadge({ ticket, barberIndex, onFinish }: { ticket: Ticket; barbe
 
 /* ─── BarberCard ─── */
 function BarberCard({
-  barber, barberIndex, serving, waiting, processingBarber, onNext, onCancel, onFinish,
+  barber, barberIndex, serving, waiting, processingBarber, onNext, onCancel, onFinish, onTicketClick
 }: {
   barber: Barber;
   barberIndex: number;
@@ -207,6 +210,7 @@ function BarberCard({
   onNext: () => void;
   onCancel: (id: string) => void;
   onFinish: (id: string) => void;
+  onTicketClick: (ticket: Ticket) => void;
 }) {
   const isProcessing = processingBarber === barber.id;
   return (
@@ -266,7 +270,7 @@ function BarberCard({
         {waiting.length > 0 && (
           <div className="space-y-2 max-h-40 overflow-y-auto scrollbar-hide mt-1">
             {waiting.map((t) => (
-              <TicketRow key={t.id} ticket={t} barberIndex={barberIndex} onCancel={() => onCancel(t.id)} />
+              <TicketRow key={t.id} ticket={t} barberIndex={barberIndex} onCancel={() => onCancel(t.id)} onClick={() => onTicketClick(t)} />
             ))}
           </div>
         )}
@@ -298,6 +302,7 @@ export default function AdminDashboard() {
   const [manualPhone, setManualPhone] = useState('');
   const [manualPeople, setManualPeople] = useState(1);
   const [manualBarber, setManualBarber] = useState('');
+  const [selectedTicketDetails, setSelectedTicketDetails] = useState<Ticket | null>(null);
   const [autoPrint, setAutoPrint] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
@@ -809,6 +814,7 @@ export default function AdminDashboard() {
                     onNext={() => handleNextCustomer(barber.id)}
                     onCancel={cancelTicket}
                     onFinish={finishTicket}
+                    onTicketClick={setSelectedTicketDetails}
                   />
                 );
               })}
@@ -841,7 +847,7 @@ export default function AdminDashboard() {
                     const barberIndex = getBarberIndex(barber?.id);
                     const code = getTicketCode(barberIndex, t.ticket_number);
                     return (
-                      <div key={t.id} className="flex items-center gap-4 px-5 py-4 hover:bg-zinc-900/50 transition-colors group">
+                      <div key={t.id} onClick={() => setSelectedTicketDetails(t)} className="flex items-center gap-4 px-5 py-4 hover:bg-zinc-900/50 transition-colors group cursor-pointer">
                         <div className={cn(
                           'w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm shrink-0 border',
                           t.status === 'serving'
@@ -872,7 +878,7 @@ export default function AdminDashboard() {
                           )}>
                             {t.status === 'serving' ? 'يُخدم' : 'انتظار'}
                           </span>
-                          <button onClick={() => cancelTicket(t.id)}
+                          <button onClick={(e) => { e.stopPropagation(); cancelTicket(t.id); }}
                             className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20">
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -978,6 +984,55 @@ export default function AdminDashboard() {
           })}
         </Tabs>
       </div>
+
+      {/* Customer Contact Dialog */}
+      <Dialog open={!!selectedTicketDetails} onOpenChange={(o) => !o && setSelectedTicketDetails(null)}>
+        <DialogContent className="bg-zinc-950 border-zinc-800 text-white rounded-2xl w-[90vw] max-w-sm p-6" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-right text-yellow-400">تفاصيل الزبون</DialogTitle>
+            <DialogDescription className="text-zinc-400 text-sm text-right mt-1">
+              رقم التذكرة: {selectedTicketDetails ? getTicketCode(getBarberIndex(selectedTicketDetails.barber_id), selectedTicketDetails.ticket_number) : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedTicketDetails && (
+            <div className="space-y-4 mt-2">
+              <div className="bg-black/50 p-4 rounded-xl border border-zinc-800/80 items-center justify-between">
+                <p className="text-zinc-500 text-xs font-bold mb-1">الاسم الكامل</p>
+                <p className="text-lg font-black text-white">{selectedTicketDetails.customer_name}</p>
+                {selectedTicketDetails.people_count > 1 && (
+                  <p className="mt-2 text-yellow-400 text-sm font-bold bg-yellow-400/10 px-2 py-1 rounded inline-block">
+                    {selectedTicketDetails.people_count} أشخاص
+                  </p>
+                )}
+              </div>
+
+              {selectedTicketDetails.phone_number ? (
+                <a
+                  href={`tel:${selectedTicketDetails.phone_number}`}
+                  className="flex items-center gap-3 w-full bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 p-4 rounded-xl transition-all duration-200 cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+                    <Phone className="w-5 h-5 pointer-events-none" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold opacity-80 mb-0.5 pointer-events-none">رقم الهاتف (انقر للاتصال)</p>
+                    <p className="text-lg font-black tracking-wide pointer-events-none" dir="ltr">{selectedTicketDetails.phone_number}</p>
+                  </div>
+                </a>
+              ) : (
+                <div className="flex items-center gap-3 w-full bg-zinc-900 border border-zinc-800 text-zinc-500 p-4 rounded-xl">
+                  <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center shrink-0">
+                    <Phone className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">لا يوجد رقم هاتف</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
