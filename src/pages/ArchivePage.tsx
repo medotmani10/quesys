@@ -45,7 +45,7 @@ export default function ArchivePage() {
     loadShopData(session.user.id);
   };
 
-  const loadShopData = async (userId: string) => {
+  const loadShopData = async (userId: string, retries = 3) => {
     try {
       const { data: shopData, error: shopError } = await supabase
         .from('shops')
@@ -54,6 +54,10 @@ export default function ArchivePage() {
         .single();
 
       if (shopError || !shopData) {
+        if (retries > 0) {
+          setTimeout(() => loadShopData(userId, retries - 1), 500);
+          return;
+        }
         navigate('/onboarding');
         return;
       }

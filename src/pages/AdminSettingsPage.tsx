@@ -43,38 +43,49 @@ export default function AdminSettingsPage() {
     const loadData = async () => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
-
             if (!session) {
                 navigate('/');
                 return;
             }
-
             setCurrentUser(session.user);
+            await loadShopData(session.user.id);
+        } catch (error) {
+            toast.error('حدث خطأ أثناء تحميل الحساب');
+            setLoading(false);
+        }
+    };
 
-            const { data: shopData } = await supabase
+    const loadShopData = async (userId: string, retries = 3) => {
+        try {
+            const { data: shopData, error } = await supabase
                 .from('shops')
                 .select('*')
-                .eq('owner_id', session.user.id)
+                .eq('owner_id', userId)
                 .single();
 
-            if (shopData) {
-                setShop(shopData);
-                setShopName(shopData.name);
-                setMapsUrl(shopData.maps_url || '');
-                setShopPhone(shopData.phone || '');
-                setLogoPreview(shopData.logo_url);
-
-                const { data: barbersData } = await supabase
-                    .from('barbers')
-                    .select('*')
-                    .eq('shop_id', shopData.id)
-                    .order('created_at', { ascending: true });
-
-                if (barbersData) {
-                    setBarbers(barbersData);
+            if (error || !shopData) {
+                if (retries > 0) {
+                    setTimeout(() => loadShopData(userId, retries - 1), 500);
+                    return;
                 }
-            } else {
                 navigate('/onboarding');
+                return;
+            }
+
+            setShop(shopData as Shop);
+            setShopName(shopData.name);
+            setMapsUrl(shopData.maps_url || '');
+            setShopPhone(shopData.phone || '');
+            setLogoPreview(shopData.logo_url);
+
+            const { data: barbersData } = await supabase
+                .from('barbers')
+                .select('*')
+                .eq('shop_id', shopData.id)
+                .order('created_at', { ascending: true });
+
+            if (barbersData) {
+                setBarbers(barbersData);
             }
         } catch (error) {
             toast.error('حدث خطأ أثناء تحميل البيانات');

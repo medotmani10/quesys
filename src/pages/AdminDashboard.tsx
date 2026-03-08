@@ -322,16 +322,26 @@ export default function AdminDashboard() {
     loadShopData(session.user.id);
   };
 
-  const loadShopData = async (userId: string) => {
+  const loadShopData = async (userId: string, retries = 3) => {
     try {
       const { data: shopData, error } = await supabase.from('shops').select('*').eq('owner_id', userId).single();
-      if (error || !shopData) { navigate('/onboarding'); return; }
+      if (error || !shopData) {
+        if (retries > 0) {
+          setTimeout(() => loadShopData(userId, retries - 1), 500);
+          return;
+        }
+        navigate('/onboarding');
+        return;
+      }
       setShop(shopData as Shop);
       // Order by created_at strictly to ensure stable letters A, B
       const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', shopData.id).order('created_at', { ascending: true });
       setBarbers((barbersData as Barber[]) || []);
       setLoading(false);
-    } catch { toast.error('حدث خطأ في تحميل البيانات'); setLoading(false); }
+    } catch {
+      toast.error('حدث خطأ في تحميل البيانات');
+      setLoading(false);
+    }
   };
 
   const getBarberIndex = (barberId: string | undefined | null) => {
