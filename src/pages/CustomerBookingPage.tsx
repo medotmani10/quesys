@@ -5,18 +5,16 @@ import type { Shop, Barber, Ticket } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MapPin, User, Phone, Users, Scissors, AlertCircle, Loader2, X, CheckCircle } from 'lucide-react';
+import { MapPin, User, Phone, Users, Scissors, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import ActiveTicketCard from '@/components/booking/ActiveTicketCard';
+import ShopClosedScreen from '@/components/booking/ShopClosedScreen';
 
-/** Returns the per-barber display code, e.g. "A1" for the 1st barber, "B1" for the 2nd.
- *  It uses the index of the barber in the sorted list (0 = A, 1 = B). */
+/** Returns the per-barber display code, e.g. "A1" for the 1st barber, "B1" for the 2nd. */
 export function getTicketCode(barberIndex: number | undefined, ticketNumber: number): string {
-  let prefix = '#';
-  if (barberIndex !== undefined && barberIndex >= 0) {
-    // 0 -> 'A', 1 -> 'B', 2 -> 'C', etc.
-    prefix = String.fromCharCode(65 + (barberIndex % 26));
-  }
-
+  const prefix = barberIndex !== undefined && barberIndex >= 0
+    ? String.fromCharCode(65 + (barberIndex % 26))
+    : '#';
   return `${prefix}${ticketNumber}`;
 }
 
@@ -35,9 +33,10 @@ export default function CustomerBookingPage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [peopleCount, setPeopleCount] = useState(1);
-  const [selectedBarber, setSelectedBarber] = useState<string>(''); // '' = none selected (required)
+  const [selectedBarber, setSelectedBarber] = useState<string>('');
 
   useEffect(() => { if (slug) loadShopData(); }, [slug]);
+
   useEffect(() => {
     if (activeTicket) return subscribeToTicketUpdates();
   }, [activeTicket?.id]);
@@ -76,7 +75,7 @@ export default function CustomerBookingPage() {
       const bList = (barbersData as Barber[]) || [];
       setBarbers(bList);
 
-      // Load queue counts per barber for the visual buttons
+      // Queue counts — only fetch barber_id + people_count (no PII)
       const { data: waitingTickets } = await supabase.from('tickets').select('barber_id, people_count').eq('shop_id', shopData.id).eq('status', 'waiting');
       const counts: Record<string, number> = {};
       bList.forEach(b => { counts[b.id] = 0; });
@@ -85,27 +84,26 @@ export default function CustomerBookingPage() {
       });
       setBarberQueueCounts(counts);
 
+      // Check for existing active ticket for this session
       const sessionId = getOrCreateSessionId();
       const { data: ticketsData } = await supabase.from('tickets').select('*').eq('shop_id', shopData.id).eq('user_session_id', sessionId).in('status', ['waiting', 'serving']).order('created_at', { ascending: false }).limit(1);
       if (ticketsData && ticketsData.length > 0) {
         const ticket = ticketsData[0] as Ticket;
         setActiveTicket(ticket);
-        calculatePeopleAhead(ticket, shopData.id);
+        await calculatePeopleAhead(ticket);
       }
     } catch { toast.error('حدث خطأ في تحميل البيانات'); }
     finally { setLoading(false); }
   };
 
-  const calculatePeopleAhead = async (ticket: Ticket, shopId: string) => {
-    let query = supabase.from('tickets').select('people_count').eq('shop_id', shopId).eq('status', 'waiting').lt('created_at', ticket.created_at);
-    if (ticket.barber_id) query = query.eq('barber_id', ticket.barber_id);
-    const { data } = await query;
-    if (data) {
-      const total = data.reduce((sum, row) => sum + (row.people_count || 1), 0);
-      setPeopleAhead(total);
-    } else {
-      setPeopleAhead(0);
-    }
+  // FIX 4: Use server-side aggregation RPC instead of fetching all rows (N+1 fix)
+  const calculatePeopleAhead = async (ticket: Ticket) => {
+    const { data, error } = await supabase.rpc('get_people_ahead', {
+      p_shop_id: ticket.shop_id,
+      p_barber_id: ticket.barber_id,
+      p_created_at: ticket.created_at,
+    });
+    if (!error) setPeopleAhead(data ?? 0);
   };
 
   const subscribeToTicketUpdates = () => {
@@ -118,7 +116,6 @@ export default function CustomerBookingPage() {
         else if (updatedTicket.status === 'completed') { toast.info('تم إنهاء الخدمة، شكراً!'); setActiveTicket(null); }
         else if (updatedTicket.status === 'canceled') { toast.error('تم إلغاء التذكرة'); setActiveTicket(null); }
       }).subscribe();
-    // ✅ FIXED C-5: return cleanup so useEffect can unsubscribe on re-run
     return () => { supabase.removeChannel(subscription); };
   };
 
@@ -126,40 +123,35 @@ export default function CustomerBookingPage() {
     e.preventDefault();
     if (!shop) return;
     if (!name.trim() || !phone.trim()) { toast.error('يرجى ملء جميع الحقول'); return; }
-    // ✅ FIXED M-1: validate phone number format (5+ digits, optional + prefix)
-    if (!/^[+]?[\d\s()-]{5,15}$/.test(phone.trim())) {
-      toast.error('رقم الهاتف غير صحيح'); return;
-    }
+    if (!/^[+]?[\d\s()-]{5,15}$/.test(phone.trim())) { toast.error('رقم الهاتف غير صحيح'); return; }
     if (!selectedBarber) { toast.error('يرجى اختيار الحلاق أولاً'); return; }
+
     setSubmitting(true);
     try {
-      // ✅ FIXED H-7: re-fetch shop is_open status before submitting (stale UI guard)
-      const { data: freshShop } = await supabase.from('shops').select('is_open').eq('id', shop.id).single();
-      if (!freshShop?.is_open) {
-        toast.error('عذراً — الصالون مغلق حالياً');
+      const sessionId = getOrCreateSessionId();
+
+      // FIX 3: Single atomic RPC — eliminates race condition on ticket_number
+      const { data: ticket, error } = await supabase.rpc('create_ticket', {
+        p_shop_id: shop.id,
+        p_barber_id: selectedBarber,
+        p_name: name.trim(),
+        p_phone: phone.trim(),
+        p_people: peopleCount,
+        p_session_id: sessionId,
+      });
+
+      if (error) {
+        if (error.message.includes('shop_closed')) toast.error('عذراً — الصالون مغلق حالياً');
+        else if (error.message.includes('duplicate_active_ticket')) toast.error('لديك حجز نشط بالفعل');
+        else toast.error('فشل في إنشاء التذكرة');
         setSubmitting(false);
         return;
       }
-      const sessionId = getOrCreateSessionId();
-      const { data: ticketNumberData, error: ticketNumError } = await supabase.rpc('get_next_ticket_number', {
-        p_shop_id: shop.id,
-        p_barber_id: selectedBarber
-      });
-      if (ticketNumError) { toast.error('فشل في إنشاء التذكرة'); setSubmitting(false); return; }
-      const { data: ticket, error } = await supabase.from('tickets').insert({
-        shop_id: shop.id,
-        barber_id: selectedBarber,
-        customer_name: name.trim(),
-        phone_number: phone.trim(),
-        people_count: peopleCount,
-        ticket_number: ticketNumberData as number,
-        user_session_id: sessionId,
-        status: 'waiting',
-      }).select().single();
-      if (error) { toast.error('فشل في إنشاء التذكرة'); setSubmitting(false); return; }
-      const newTicket = ticket as Ticket;
+
+      // create_ticket returns SETOF tickets — first row is the new ticket
+      const newTicket = (Array.isArray(ticket) ? ticket[0] : ticket) as Ticket;
       setActiveTicket(newTicket);
-      calculatePeopleAhead(newTicket, shop.id);
+      await calculatePeopleAhead(newTicket);
       toast.success('تم إنشاء التذكرة!');
     } catch { toast.error('حدث خطأ غير متوقع'); }
     finally { setSubmitting(false); }
@@ -167,7 +159,6 @@ export default function CustomerBookingPage() {
 
   const handleCancelTicket = async () => {
     if (!activeTicket) return;
-    // ✅ FIXED H-4: confirm before cancelling to prevent accidental taps
     const confirmed = window.confirm('هل أنت متأكد من إلغاء الحجز؟');
     if (!confirmed) return;
     try {
@@ -176,12 +167,6 @@ export default function CustomerBookingPage() {
       toast.success('تم إلغاء التذكرة');
       setActiveTicket(null);
     } catch { toast.error('فشل إلغاء التذكرة'); }
-  };
-
-  const getBarberById = (barberId: string | null) => barbers.find(b => b.id === barberId) || null;
-  const getBarberIndex = (barberId: string | null) => {
-    if (!barberId) return -1;
-    return barbers.findIndex(b => b.id === barberId);
   };
 
   // ─── LOADING ───
@@ -205,108 +190,22 @@ export default function CustomerBookingPage() {
     </div>
   );
 
-  // ─── CLOSED ───
-  if (!shop.is_open) return (
-    <div className="min-h-[100dvh] bg-black flex items-center justify-center p-4">
-      <div className="max-w-sm w-full bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
-        <div className="h-2 bg-red-500 w-full" />
-        <div className="p-8 text-center">
-          {shop.logo_url
-            ? <img src={shop.logo_url} alt={shop.name} className="w-20 h-20 object-contain rounded-xl border border-zinc-700 mx-auto mb-6 p-2" />
-            : <div className="w-20 h-20 bg-yellow-400 rounded-xl flex items-center justify-center mx-auto mb-6"><Scissors className="w-10 h-10 text-black" /></div>
-          }
-          <h1 className="text-2xl font-black text-white mb-4">{shop.name}</h1>
-          <div className="inline-flex items-center gap-2 px-5 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-full text-sm font-bold">
-            <AlertCircle className="w-4 h-4" /> الصالون مغلق حالياً
-          </div>
-        </div>
-      </div>
-    </div>
+  // ─── CLOSED ─── (extracted component)
+  if (!shop.is_open) return <ShopClosedScreen shopName={shop.name} />;
+
+  // ─── ACTIVE TICKET ─── (extracted component)
+  if (activeTicket) return (
+    <ActiveTicketCard
+      ticket={activeTicket}
+      peopleAhead={peopleAhead}
+      barbers={barbers}
+      onCancel={handleCancelTicket}
+    />
   );
-
-  // ─── ACTIVE TICKET ───
-  if (activeTicket) {
-    const activeBarber = getBarberById(activeTicket.barber_id);
-    const activeBarberIndex = getBarberIndex(activeTicket.barber_id);
-    const ticketCode = getTicketCode(activeBarberIndex, activeTicket.ticket_number);
-    return (
-      <div className="min-h-[100dvh] bg-black p-4">
-        <div className="w-full max-w-xl mx-auto pt-6">
-          {/* Shop mini-header */}
-          <div className="flex items-center gap-3 mb-6 bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
-            {shop.logo_url
-              ? <img src={shop.logo_url} alt={shop.name} className="w-12 h-12 object-contain rounded-xl border border-zinc-700" />
-              : <div className="w-12 h-12 bg-yellow-400 rounded-xl flex items-center justify-center shrink-0"><Scissors className="w-6 h-6 text-black" /></div>
-            }
-            <div>
-              <h2 className="font-black text-white text-lg leading-tight">{shop.name}</h2>
-              <p className="text-xs text-zinc-500">نظام الانتظار الرقمي</p>
-            </div>
-          </div>
-
-          {/* Ticket Card */}
-          <div className={`rounded-2xl border-2 overflow-hidden mb-6 ${activeTicket.status === 'serving' ? 'border-green-500' : 'border-yellow-400'}`}>
-            <div className={`h-2 w-full ${activeTicket.status === 'serving' ? 'bg-green-500' : 'bg-yellow-400'}`} />
-            <div className="bg-zinc-900 p-8 text-center">
-              <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-2">رقم تذكرتك</p>
-              <div className={`text-7xl font-black mb-3 tracking-tighter ${activeTicket.status === 'serving' ? 'text-green-400' : 'text-yellow-400'}`}>
-                {ticketCode}
-              </div>
-
-              {activeBarber && (
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-zinc-800 rounded-full mb-5">
-                  <Scissors className="w-3.5 h-3.5 text-yellow-400" />
-                  <span className="text-zinc-300 text-sm font-bold">{activeBarber.name}</span>
-                </div>
-              )}
-
-              <div className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-black mb-8 ${activeTicket.status === 'serving' ? 'bg-green-500/10 text-green-400 border border-green-500/30' : 'bg-yellow-400/10 text-yellow-400 border border-yellow-400/30'}`}>
-                <div className={`w-2 h-2 rounded-full animate-pulse ${activeTicket.status === 'serving' ? 'bg-green-400' : 'bg-yellow-400'}`} />
-                {activeTicket.status === 'serving' ? 'دورك الآن! تفضل للحلاق' : 'في قائمة الانتظار'}
-              </div>
-
-              {activeTicket.status === 'waiting' && (
-                <div className="bg-black border border-zinc-800 rounded-xl p-6 mb-8">
-                  <p className="text-zinc-500 text-xs font-bold mb-2">أشخاص قبلك عند هذا الحلاق</p>
-                  <p className="text-6xl font-black text-white">{peopleAhead}</p>
-                </div>
-              )}
-
-              <div className="space-y-3 text-sm text-right bg-black/50 border border-zinc-800 rounded-xl p-5 mb-8">
-                {[
-                  { icon: <User className="w-4 h-4 text-yellow-400" />, label: 'الاسم', value: activeTicket.customer_name },
-                  { icon: <Scissors className="w-4 h-4 text-yellow-400" />, label: 'الحلاق', value: activeBarber?.name || 'غير محدد' },
-                  { icon: <Users className="w-4 h-4 text-yellow-400" />, label: 'العدد', value: `${activeTicket.people_count} ${activeTicket.people_count === 1 ? 'شخص' : 'أشخاص'}` },
-                ].map((row, i) => (
-                  <div key={i} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 font-black text-white">{row.icon}{row.value}</div>
-                    <span className="text-zinc-600 text-xs">{row.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Live + Cancel */}
-          <div className="flex items-center justify-center gap-2 text-xs font-bold text-green-400 bg-green-500/5 border border-green-500/20 rounded-xl py-3 mb-4">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            النظام متصل ويتحدث تلقائياً
-          </div>
-
-          {activeTicket.status === 'waiting' && (
-            <Button onClick={handleCancelTicket} variant="outline"
-              className="w-full rounded-xl h-12 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 font-bold">
-              <X className="w-4 h-4 mr-2" /> إلغاء الحجز
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   // ─── BOOKING FORM ───
   return (
-    <div className="min-h-[100dvh] bg-black p-4 flex flex-col">
+    <div className="min-h-[100dvh] bg-black p-4 flex flex-col" dir="rtl">
       <div className="w-full max-w-xl mx-auto pt-6 pb-10 flex-1 flex flex-col">
 
         {/* Shop Header */}
@@ -343,7 +242,7 @@ export default function CustomerBookingPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
-            {/* Barber selection — REQUIRED, shown FIRST */}
+            {/* Barber selection */}
             <div className="space-y-3">
               <Label className="flex items-center gap-2 text-zinc-300 text-sm font-bold">
                 <Scissors className="w-4 h-4 text-yellow-400" />
@@ -364,9 +263,7 @@ export default function CustomerBookingPage() {
                         : 'bg-black border-zinc-800 hover:border-zinc-600'
                         }`}
                     >
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 font-black text-xl transition-all ${isSelected ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-400'
-                        }`}>
-                        {/* ✅ FIXED M-2: safe access — guard against empty barber name */}
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 font-black text-xl transition-all ${isSelected ? 'bg-yellow-400 text-black' : 'bg-zinc-900 text-zinc-400'}`}>
                         {(barber.name?.trim() || 'X')[0].toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -377,9 +274,7 @@ export default function CustomerBookingPage() {
                           {queueCount === 0 ? 'لا انتظار ✓' : `${queueCount} ${queueCount === 1 ? 'شخص' : 'أشخاص'} بالانتظار`}
                         </p>
                       </div>
-                      {isSelected && (
-                        <CheckCircle className="w-5 h-5 text-yellow-400 shrink-0" />
-                      )}
+                      {isSelected && <CheckCircle className="w-5 h-5 text-yellow-400 shrink-0" />}
                     </button>
                   );
                 })}
