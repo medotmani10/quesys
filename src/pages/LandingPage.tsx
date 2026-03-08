@@ -19,9 +19,7 @@ function useCountUp(end: number, duration: number, start: boolean) {
 }
 
 export default function LandingPage() {
-  const [isSplashOpen, setIsSplashOpen] = useState(false);
   const [statsVisible, setStatsVisible] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const statsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,31 +29,14 @@ export default function LandingPage() {
     );
     if (statsRef.current) observer.observe(statsRef.current);
 
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
     return () => {
       observer.disconnect();
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
 
-  const handleAppDownload = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') setDeferredPrompt(null);
-    } else {
-      // Fallback: show splash then redirect to /login for already-installed or unsupported browsers
-      setIsSplashOpen(true);
-      setTimeout(() => {
-        setIsSplashOpen(false);
-        window.location.href = '/login';
-      }, 2000);
-    }
+  const handleAppDownload = () => {
+    // Navigate straight to the admin subdomain.
+    window.location.href = 'https://admin-barberticket.vercel.app';
   };
 
   const stat1 = useCountUp(500, 2000, statsVisible);
@@ -97,27 +78,6 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-[100dvh] bg-black text-white selection:bg-yellow-400/30 font-sans">
-      {/* ─── SPLASH SCREEN ─── */}
-      {isSplashOpen && (
-        <div className="fixed inset-0 z-[200] bg-zinc-950 flex flex-col items-center justify-center animate-in fade-in duration-300">
-          <div className="flex flex-col items-center animate-pulse duration-1000">
-            <img src="/pwa-icon.svg" alt="Barber Ticket Logo" className="w-32 h-32 mb-6 drop-shadow-[0_0_30px_rgba(250,204,21,0.3)]" />
-            <h1 className="text-4xl font-black text-white tracking-tight">Barber <span className="text-yellow-400">Ticket</span></h1>
-          </div>
-          <div className="mt-12 w-64 h-1.5 bg-zinc-900 rounded-full overflow-hidden">
-            <div className="h-full bg-yellow-400 rounded-full animate-[progress_2s_ease-out_forwards]" />
-          </div>
-          <p className="text-zinc-500 mt-4 text-sm font-medium animate-pulse">جاري تحميل التطبيق...</p>
-          <style>{`
-            @keyframes progress {
-              0% { width: 0% }
-              20% { width: 30% }
-              60% { width: 70% }
-              100% { width: 100% }
-            }
-          `}</style>
-        </div>
-      )}
 
       {/* ─── HEADER ─── */}
       <header className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-xl border-b border-white/5">

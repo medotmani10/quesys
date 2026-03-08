@@ -13,10 +13,6 @@ import BarberLoginPage from '@/pages/BarberLoginPage';
 import BarberDashboard from '@/pages/BarberDashboard';
 import { Scissors } from 'lucide-react';
 
-// Detect if the app is running as an installed PWA (standalone mode)
-const isPWA = window.matchMedia('(display-mode: standalone)').matches
-  || (window.navigator as any).standalone === true;
-
 // Fallback component for the Barber Standalone App
 // The barber manifest's start_url is /barber-entry
 function BarberEntryFallback() {
@@ -45,42 +41,70 @@ function BarberEntryFallback() {
 }
 
 function App() {
+  const hostname = window.location.hostname;
+  const isAdmin = hostname.includes('admin');
+  const isBarber = hostname.includes('barber-') || hostname.includes('barber.');
+
+  // ---------------------------------------------------------------------------
+  // ADMIN ROUTES
+  // ---------------------------------------------------------------------------
+  if (isAdmin) {
+    return (
+      <BrowserRouter>
+        <div dir="rtl" className="min-h-[100dvh] bg-background text-foreground">
+          <Routes>
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/archive" element={<ArchivePage />} />
+            <Route path="/admin/settings" element={<AdminSettingsPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          <Toaster position="top-center" richColors />
+        </div>
+      </BrowserRouter>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // BARBER ROUTES
+  // ---------------------------------------------------------------------------
+  if (isBarber) {
+    return (
+      <BrowserRouter>
+        <div dir="rtl" className="min-h-[100dvh] bg-background text-foreground">
+          <Routes>
+            {/* Standard URLs from previous setup mapped safely */}
+            <Route path="/" element={<BarberEntryFallback />} />
+            <Route path="/barber-entry" element={<Navigate to="/" replace />} />
+            <Route path="/:slug/barber/login" element={<BarberLoginPage />} />
+            <Route path="/:slug/barber" element={<BarberDashboard />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          <Toaster position="top-center" richColors />
+        </div>
+      </BrowserRouter>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // CUSTOMER / MAIN ROUTES
+  // ---------------------------------------------------------------------------
   return (
     <BrowserRouter>
       <div dir="rtl" className="min-h-[100dvh] bg-background text-foreground">
         <Routes>
-          {/* Root: landing page for web, login for PWA */}
-          <Route path="/" element={isPWA ? <Navigate to="/login" replace /> : <LandingPage />} />
+          {/* Customer landing */}
+          <Route path="/" element={<LandingPage />} />
 
-          {/* Auth & setup — available in both modes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/onboarding" element={<OnboardingPage />} />
-
-          {/* Admin routes — always accessible */}
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/archive" element={<ArchivePage />} />
-          <Route path="/admin/settings" element={<AdminSettingsPage />} />
-
-          {/* Ticket status page — QR code direct link, no auth needed, web+PWA */}
+          {/* Shared views */}
           <Route path="/t/:ticketId" element={<TicketStatusPage />} />
-
-          {/* Customer booking page:
-              - In PWA → go to admin (customers use browser link, not the installed app)
-              - In browser → show the customer booking page */}
-          {/* TV display page — must be BEFORE the /:slug catch-all */}
           <Route path="/:slug/tv" element={<TVDisplayPage />} />
 
-          {/* Barber PWA pages */}
-          <Route path="/barber-entry" element={<BarberEntryFallback />} />
-          <Route path="/:slug/barber/login" element={<BarberLoginPage />} />
-          <Route path="/:slug/barber" element={<BarberDashboard />} />
+          {/* Customer booking */}
+          <Route path="/:slug" element={<CustomerBookingPage />} />
 
-          <Route
-            path="/:slug"
-            element={isPWA ? <Navigate to="/admin" replace /> : <CustomerBookingPage />}
-          />
-
-          {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Toaster position="top-center" richColors />

@@ -17,15 +17,17 @@
 
   <!-- Dynamic Barber PWA Injection -->
   <script>
-    if (window.location.pathname.includes('/barber')) {
+    if (window.location.hostname.includes('barber-') || window.location.hostname.includes('barber.')) {
       document.getElementById('app-icon').href = '/barber-app-icon.svg';
       document.getElementById('app-apple-icon').href = '/barber-app-icon.svg';
-      document.getElementById('app-title').textContent = 'لوحة الحلاق';
+      document.getElementById('app-title').textContent = 'Barber App';
 
       const manifestLink = document.createElement('link');
       manifestLink.rel = 'manifest';
       manifestLink.href = '/barber-manifest.json';
       document.head.appendChild(manifestLink);
+    } else if (window.location.hostname.includes('admin')) {
+      document.getElementById('app-title').textContent = 'Barber Ticket — الإدارة';
     } else {
       // The default VitePWA plugin will inject the default manifest automatically.
     }
