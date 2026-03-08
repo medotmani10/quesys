@@ -18,9 +18,7 @@ import { playTicketSound } from '@/lib/notificationSound';
 import { getTicketCode } from '@/pages/CustomerBookingPage';
 
 /* ─── helpers ─── */
-function cn(...classes: (string | undefined | false)[]) {
-  return classes.filter(Boolean).join(' ');
-}
+import { cn, getCustomerBaseUrl, getBarberBaseUrl } from '@/lib/utils';
 
 /* ─── StatCard ─── */
 function StatCard({ label, value, color, sub }: { label: string; value: number; color: string; sub?: string }) {
@@ -53,13 +51,14 @@ function StatCard({ label, value, color, sub }: { label: string; value: number; 
 
 /* ─── QuickLinks ─── */
 function QuickLinks({ shop }: { shop: Shop }) {
-  const baseUrl = window.location.origin;
+  const customerBase = getCustomerBaseUrl();
+  const barberBase = getBarberBaseUrl();
 
   const links = [
     {
       title: 'رابط الزبائن',
       desc: 'للحجز والانضمام للطابور',
-      url: `${baseUrl}/${shop.slug}`,
+      url: `${customerBase}/${shop.slug}`,
       icon: <Users className="w-5 h-5 text-blue-400" />,
       themeClasses: 'hover:border-blue-500/30 hover:shadow-[0_8px_32px_-4px_rgba(59,130,246,0.15)]',
       iconClasses: 'bg-blue-500/10 border-blue-500/20'
@@ -67,7 +66,7 @@ function QuickLinks({ shop }: { shop: Shop }) {
     {
       title: 'شاشة العرض (TV)',
       desc: 'لعرض حالة الطابور في الصالون',
-      url: `${baseUrl}/${shop.slug}/tv`,
+      url: `${customerBase}/${shop.slug}/tv`,
       icon: <MonitorPlay className="w-5 h-5 text-purple-400" />,
       themeClasses: 'hover:border-purple-500/30 hover:shadow-[0_8px_32px_-4px_rgba(168,85,247,0.15)]',
       iconClasses: 'bg-purple-500/10 border-purple-500/20'
@@ -75,7 +74,7 @@ function QuickLinks({ shop }: { shop: Shop }) {
     {
       title: 'تطبيق الحلاقين',
       desc: 'للوصول إلى لوحة تحكم الحلاق',
-      url: `${baseUrl}/${shop.slug}/barber/login`,
+      url: `${barberBase}/${shop.slug}/barber/login`,
       icon: <Smartphone className="w-5 h-5 text-emerald-400" />,
       themeClasses: 'hover:border-emerald-500/30 hover:shadow-[0_8px_32px_-4px_rgba(16,185,129,0.15)]',
       iconClasses: 'bg-emerald-500/10 border-emerald-500/20'

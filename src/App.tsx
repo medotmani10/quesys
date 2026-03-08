@@ -13,6 +13,8 @@ import BarberLoginPage from '@/pages/BarberLoginPage';
 import BarberDashboard from '@/pages/BarberDashboard';
 import { Scissors } from 'lucide-react';
 import AdminInstallPrompt from '@/components/AdminInstallPrompt';
+import BarberInstallPrompt from '@/components/BarberInstallPrompt';
+import { getBarberBaseUrl } from '@/lib/utils';
 
 // Fallback component for the Barber Standalone App
 // The barber manifest's start_url is /barber-entry
@@ -35,7 +37,7 @@ function BarberEntryFallback() {
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-sm text-zinc-500 w-full max-w-sm">
         مثال:
         <br />
-        <span className="text-white font-mono mt-2 block">barberticket.com/<b>[اسم الصالون]</b>/barber/login</span>
+        <span className="text-white font-mono mt-2 block" dir="ltr">{getBarberBaseUrl()}/<b>[اسم الصالون]</b>/barber/login</span>
       </div>
     </div>
   );
@@ -84,6 +86,7 @@ function App() {
             <Route path="/:slug/barber" element={<BarberDashboard />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          <BarberInstallPrompt />
           <Toaster position="top-center" richColors />
         </div>
       </BrowserRouter>

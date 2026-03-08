@@ -1,4 +1,5 @@
 import { QRCodeSVG } from 'qrcode.react';
+import { getCustomerBaseUrl } from '@/lib/utils';
 
 // ✅ FIXED C-4: strip script tags and event handlers from HTML before printing
 function sanitizeHtml(html: string): string {
@@ -31,7 +32,8 @@ export function ThermalTicket({
     peopleCount,
     createdAt,
 }: ThermalTicketProps) {
-    const trackingUrl = `${window.location.origin}/t/${ticketId}`;
+    const customerBase = getCustomerBaseUrl();
+    const trackingUrl = `${customerBase}/t/${ticketId}`;
     const code = barberIndex !== undefined && barberIndex >= 0
         ? `${String.fromCharCode(65 + (barberIndex % 26))}${ticketNumber}`
         : `${ticketNumber}`;
