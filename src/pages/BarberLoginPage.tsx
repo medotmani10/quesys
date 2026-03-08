@@ -11,15 +11,24 @@ import BarberInstallPrompt from '@/components/BarberInstallPrompt';
 export default function BarberLoginPage() {
     const { slug } = useParams<{ slug: string }>();
     const navigate = useNavigate();
+    const [shopSlug, setShopSlug] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
+    const activeSlug = slug || shopSlug.trim();
+
     useEffect(() => {
-        checkUser();
+        const savedSlug = localStorage.getItem('barber_shop_slug');
+        if (!slug && savedSlug && !window.location.pathname.includes('login')) {
+            // Auto-redirect to dashboard if we have a saved slug and are on root
+            navigate(`/${savedSlug}/barber`);
+            return;
+        }
+        checkUser(activeSlug || savedSlug);
     }, [slug]);
 
-    const checkUser = async () => {
+    const checkUser = async (currentSlug: string | null = activeSlug) => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
             // Check if this user is a barber for this shop
@@ -36,9 +45,13 @@ export default function BarberLoginPage() {
                     .eq('id', barber.shop_id)
                     .single();
 
-                if (shop && shop.slug === slug && slug) {
-                    localStorage.setItem('barber_shop_slug', slug);
-                    navigate(`/${slug}/barber`);
+                if (shop && currentSlug && shop.slug === currentSlug) {
+                    localStorage.setItem('barber_shop_slug', currentSlug);
+                    navigate(`/${currentSlug}/barber`);
+                } else if (shop && !slug) {
+                    // We're on root but logged in as a barber for SOME shop, go to that shop
+                    localStorage.setItem('barber_shop_slug', shop.slug);
+                    navigate(`/${shop.slug}/barber`);
                 }
             }
         }
@@ -46,7 +59,10 @@ export default function BarberLoginPage() {
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!slug || !username.trim() || !password.trim()) return;
+        if (!activeSlug || !username.trim() || !password.trim()) {
+            if (!activeSlug) toast.error('يرجى إدخال معرف الصالون');
+            return;
+        }
 
         setLoading(true);
 
@@ -55,7 +71,7 @@ export default function BarberLoginPage() {
         const hexName = Array.from(new TextEncoder().encode(rawName))
             .map(b => b.toString(16).padStart(2, '0'))
             .join('');
-        const pseudoEmail = `${hexName}@${slug}.com`;
+        const pseudoEmail = `${hexName}@${activeSlug}.com`;
 
         const { error } = await supabase.auth.signInWithPassword({
             email: pseudoEmail,
@@ -90,9 +106,9 @@ export default function BarberLoginPage() {
                     .eq('id', barber.shop_id)
                     .single();
 
-                if (shop && shop.slug === slug && slug) {
-                    localStorage.setItem('barber_shop_slug', slug);
-                    navigate(`/${slug}/barber`);
+                if (shop && shop.slug === activeSlug && activeSlug) {
+                    localStorage.setItem('barber_shop_slug', activeSlug);
+                    navigate(`/${activeSlug}/barber`);
                     setLoading(false);
                     return;
                 }
@@ -124,6 +140,19 @@ export default function BarberLoginPage() {
 
                 <div className="bg-zinc-900/80 backdrop-blur-xl border border-zinc-800/80 p-6 sm:p-8 rounded-[2rem] shadow-2xl">
                     <form onSubmit={handleLogin} className="space-y-5">
+                        {!slug && (
+                            <div className="space-y-2">
+                                <Label className="text-zinc-300 text-sm font-bold mr-1">معرف الصالون (الرابط)</Label>
+                                <Input
+                                    type="text"
+                                    value={shopSlug}
+                                    onChange={(e) => setShopSlug(e.target.value)}
+                                    placeholder="salon-name"
+                                    className="rounded-xl h-14 bg-black/50 border-zinc-800 focus-visible:ring-yellow-400 text-white placeholder:text-zinc-600 text-lg"
+                                    required
+                                />
+                            </div>
+                        )}
                         <div className="space-y-2">
                             <Label className="text-zinc-300 text-sm font-bold mr-1">اسم الحلاق</Label>
                             <Input
@@ -149,7 +178,7 @@ export default function BarberLoginPage() {
 
                         <Button
                             type="submit"
-                            disabled={loading || !username.trim() || !password.trim()}
+                            disabled={loading || !username.trim() || !password.trim() || !activeSlug}
                             className="w-full rounded-xl h-14 bg-yellow-400 hover:bg-yellow-300 text-black font-black text-lg transition-all shadow-[0_4px_12px_rgba(250,204,21,0.15)] mt-4 active:scale-[0.98]"
                         >
                             {loading ? (
@@ -164,14 +193,16 @@ export default function BarberLoginPage() {
                     </form>
                 </div>
 
-                <Button
-                    variant="ghost"
-                    onClick={() => navigate(`/${slug}`)}
-                    className="w-full text-zinc-500 hover:text-white"
-                >
-                    <ChevronLeft className="w-4 h-4 ml-2" />
-                    العودة لصفحة الحجز
-                </Button>
+                {slug && (
+                    <Button
+                        variant="ghost"
+                        onClick={() => navigate(`/${slug}`)}
+                        className="w-full text-zinc-500 hover:text-white"
+                    >
+                        <ChevronLeft className="w-4 h-4 ml-2" />
+                        العودة لصفحة الحجز
+                    </Button>
+                )}
             </div>
         </div>
     );
