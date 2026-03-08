@@ -12,6 +12,7 @@ import TVDisplayPage from '@/pages/TVDisplayPage';
 import BarberLoginPage from '@/pages/BarberLoginPage';
 import BarberDashboard from '@/pages/BarberDashboard';
 import { Scissors } from 'lucide-react';
+import AdminInstallPrompt from '@/components/AdminInstallPrompt';
 
 // Fallback component for the Barber Standalone App
 // The barber manifest's start_url is /barber-entry
@@ -61,6 +62,7 @@ function App() {
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          <AdminInstallPrompt />
           <Toaster position="top-center" richColors />
         </div>
       </BrowserRouter>
