@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Scissors, AlertCircle, Loader2, X, User, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTicketCode } from '@/pages/CustomerBookingPage';
+import { playTicketSound } from '@/lib/notificationSound';
 
 export default function TicketStatusPage() {
     const { ticketId } = useParams<{ ticketId: string }>();
@@ -115,7 +116,8 @@ export default function TicketStatusPage() {
                 setTicket(mergedTicket);
 
                 if (updated.status === 'serving') {
-                    toast.success('🎉 دورك الآن! تفضل للحلاق');
+                    toast.success('🎉 دورك الآن! تفضل للحلاق', { duration: 10000 });
+                    playTicketSound();
                 } else if (updated.status === 'completed') {
                     toast.info('✅ تمت الخدمة، شكراً لزيارتك!');
                 } else if (updated.status === 'canceled') {
