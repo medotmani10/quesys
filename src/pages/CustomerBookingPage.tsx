@@ -141,6 +141,7 @@ export default function CustomerBookingPage() {
       });
 
       if (error) {
+        console.error('Error creating ticket:', error);
         if (error.message.includes('shop_closed')) toast.error('عذراً — الصالون مغلق حالياً');
         else if (error.message.includes('duplicate_active_ticket')) toast.error('لديك حجز نشط بالفعل');
         else toast.error('فشل في إنشاء التذكرة');
