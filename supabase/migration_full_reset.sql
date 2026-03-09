@@ -540,23 +540,18 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime' AND puballtables = true
   ) THEN
-    -- Remove stale entries first (in case of partial state), then re-add
-    BEGIN
-      ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS tickets;
-    EXCEPTION WHEN undefined_object THEN NULL;
-    END;
-    BEGIN
-      ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS barbers;
-    EXCEPTION WHEN undefined_object THEN NULL;
-    END;
-    BEGIN
-      ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS shops;
-    EXCEPTION WHEN undefined_object THEN NULL;
-    END;
+    -- For each table, add it if it's not already in the publication
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'tickets') THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE tickets;
+    END IF;
 
-    ALTER PUBLICATION supabase_realtime ADD TABLE tickets;
-    ALTER PUBLICATION supabase_realtime ADD TABLE barbers;
-    ALTER PUBLICATION supabase_realtime ADD TABLE shops;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'barbers') THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE barbers;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'shops') THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE shops;
+    END IF;
   END IF;
 END $$;
 
