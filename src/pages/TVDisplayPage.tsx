@@ -119,10 +119,10 @@ export default function TVDisplayPage() {
             }
             const activeBarbers = barberData as Barber[];
 
-            // 2. Fetch active/waiting tickets
+            // 2. Fetch active/waiting tickets (explicitly request allowed columns to avoid 401)
             const { data: ticketData, error: ticketErr } = await supabase
                 .from('tickets')
-                .select('*')
+                .select('id, shop_id, barber_id, ticket_number, customer_name, status, people_count, created_at, updated_at')
                 .eq('shop_id', shopId)
                 .in('status', ['serving', 'waiting'])
                 .order('ticket_number', { ascending: true });
