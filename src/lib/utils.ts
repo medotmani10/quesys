@@ -7,8 +7,12 @@ export function cn(...inputs: ClassValue[]) {
 
 export function getCustomerBaseUrl() {
   if (typeof window === 'undefined') return '';
-  const host = window.location.host.replace('admin-', '').replace('admin.', '').replace('barber-', '').replace('barber.', '');
-  return `${window.location.protocol}//${host}`;
+  const host = window.location.host;
+  if (host.includes('localhost') || host.includes('127.0.0')) {
+    const localHost = host.replace('admin-', '').replace('admin.', '').replace('barber-', '').replace('barber.', '');
+    return `${window.location.protocol}//${localHost}`;
+  }
+  return 'https://costumer-barberticket.vercel.app';
 }
 
 export function getBarberBaseUrl() {
