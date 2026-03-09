@@ -61,7 +61,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_created   ON tickets(created_at);
 -- Safety-net unique constraint: no duplicate ticket numbers per barber
 CREATE UNIQUE INDEX IF NOT EXISTS tickets_unique_number
     ON tickets (shop_id, barber_id, ticket_number)
-    WHERE status IN ('waiting', 'serving');
+    WHERE status != 'canceled';
 
 -- ─── TRIGGERS ─────────────────────────────────────────────
 
