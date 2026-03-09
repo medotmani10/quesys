@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { Shop } from '@/types/database';
 import { Button } from '@/components/ui/button';
@@ -18,7 +19,7 @@ export default function OnboardingPage() {
   const [shopPhone, setShopPhone] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [barbers, setBarbers] = useState<string[]>(['']);
+  const [barbers, setBarbers] = useState<{ name: string, password: string }[]>([{ name: '', password: '' }]);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
@@ -58,7 +59,7 @@ export default function OnboardingPage() {
   };
 
   const addBarberField = () => {
-    setBarbers([...barbers, '']);
+    setBarbers([...barbers, { name: '', password: '' }]);
   };
 
   const removeBarberField = (index: number) => {
@@ -67,9 +68,15 @@ export default function OnboardingPage() {
     }
   };
 
-  const updateBarber = (index: number, value: string) => {
+  const updateBarberName = (index: number, value: string) => {
     const newBarbers = [...barbers];
-    newBarbers[index] = value;
+    newBarbers[index].name = value;
+    setBarbers(newBarbers);
+  };
+
+  const updateBarberPassword = (index: number, value: string) => {
+    const newBarbers = [...barbers];
+    newBarbers[index].password = value;
     setBarbers(newBarbers);
   };
 
@@ -116,9 +123,9 @@ export default function OnboardingPage() {
       return;
     }
 
-    const validBarbers = barbers.filter(b => b.trim() !== '');
+    const validBarbers = barbers.filter(b => b.name.trim() !== '' && b.password.trim() !== '');
     if (validBarbers.length === 0) {
-      toast.error('يرجى إضافة حلاق واحد على الأقل');
+      toast.error('يرجى إضافة حلاق واحد على الأقل مع إدخال اسمه وكلمة مروره');
       return;
     }
 
@@ -159,21 +166,37 @@ export default function OnboardingPage() {
 
       const newShop = shop as Shop;
 
+      // Create a temporary client to avoid overwriting the admin's session
+      const tempClient = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY,
+        { auth: { persistSession: false, autoRefreshToken: false } }
+      );
+
       // Create barbers
-      const barbersData = validBarbers.map(name => ({
-        shop_id: newShop.id,
-        name: name.trim(),
-        is_active: true,
-      }));
+      for (const b of validBarbers) {
+        const rawName = b.name.trim();
+        const hexName = Array.from(new TextEncoder().encode(rawName))
+          .map(byte => byte.toString(16).padStart(2, '0'))
+          .join('');
+        const pseudoEmail = `${hexName}@${newShop.slug}.com`;
 
-      const { error: barbersError } = await supabase
-        .from('barbers')
-        .insert(barbersData);
+        const { data: authData, error: authError } = await tempClient.auth.signUp({
+          email: pseudoEmail,
+          password: b.password.trim()
+        });
 
-      if (barbersError) {
-        toast.error('فشل إضافة الحلاقين');
-        setLoading(false);
-        return;
+        if (authError || !authData.user) {
+          toast.error(`فشل إنشاء حساب الحلاق: ${rawName}`);
+          continue; // Skip this one but keep trying others
+        }
+
+        await supabase.from('barbers').insert({
+          shop_id: newShop.id,
+          name: rawName,
+          is_active: true,
+          auth_id: authData.user.id
+        });
       }
 
       toast.success('تم إنشاء الصالون بنجاح!');
@@ -281,11 +304,18 @@ export default function OnboardingPage() {
 
       <div className="space-y-4">
         {barbers.map((barber, index) => (
-          <div key={index} className="flex gap-3 animate-in slide-in-from-right-2 duration-300" style={{ animationDelay: `${index * 50}ms` }}>
+          <div key={index} className="flex flex-col sm:flex-row gap-3 animate-in slide-in-from-right-2 duration-300" style={{ animationDelay: `${index * 50}ms` }}>
             <Input
-              value={barber}
-              onChange={(e) => updateBarber(index, e.target.value)}
-              placeholder={`الحلاق ${index + 1}`}
+              value={barber.name}
+              onChange={(e) => updateBarberName(index, e.target.value)}
+              placeholder={`اسم الحلاق ${index + 1}`}
+              className="rounded-2xl h-14 bg-black/50 border-zinc-800 text-white focus-visible:ring-yellow-400 placeholder:text-zinc-600 flex-1 text-lg"
+            />
+            <Input
+              value={barber.password}
+              onChange={(e) => updateBarberPassword(index, e.target.value)}
+              placeholder="عينة كلمة المرور..."
+              type="password"
               className="rounded-2xl h-14 bg-black/50 border-zinc-800 text-white focus-visible:ring-yellow-400 placeholder:text-zinc-600 flex-1 text-lg"
             />
             {barbers.length > 1 && (
@@ -293,7 +323,7 @@ export default function OnboardingPage() {
                 variant="ghost"
                 size="icon"
                 onClick={() => removeBarberField(index)}
-                className="rounded-2xl h-14 w-14 border border-zinc-800 bg-black/50 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 text-zinc-500 transition-all"
+                className="rounded-2xl h-14 sm:w-14 border border-zinc-800 bg-black/50 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 text-zinc-500 transition-all self-end sm:self-auto w-full"
               >
                 <X className="w-5 h-5" />
               </Button>
@@ -322,7 +352,7 @@ export default function OnboardingPage() {
         <Button
           onClick={handleSubmit}
           className="flex-1 rounded-2xl h-16 bg-yellow-400 hover:bg-yellow-300 text-black text-lg font-black shadow-[0_10px_20px_rgba(250,204,21,0.15)] transition-all hover:scale-[1.02] order-1 sm:order-2"
-          disabled={loading || barbers.filter(b => b.trim() !== '').length === 0}
+          disabled={loading || barbers.filter(b => b.name.trim() !== '' && b.password.trim() !== '').length === 0}
         >
           {loading ? (
             <div className="flex items-center gap-2">
@@ -354,7 +384,7 @@ export default function OnboardingPage() {
           <div className="w-16 h-16 bg-yellow-400 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(250,204,21,0.3)] mb-6 animate-in zoom-in duration-500">
             <Scissors className="w-8 h-8 text-black" />
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tight">Barber <span className="text-yellow-400">Ticket</span></h1>
+          <h1 className="text-3xl font-black text-white tracking-tight">Mon <span className="text-yellow-400">Coiffure</span></h1>
           <p className="text-zinc-500 mt-2 font-medium">ابدأ رحلة صالونك الرقمية الآن</p>
         </div>
 

@@ -12,10 +12,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['pwa-icon.svg'],
+      includeAssets: ['customer-icon.svg', 'pwa-icon.svg', 'barber-app-icon.svg'],
       manifest: {
-        name: 'Barber Ticket',
-        short_name: 'Barber Ticket',
+        name: 'Mon Coiffure',
+        short_name: 'Mon Coiffure',
         description: 'نظام إدارة صالونات الحلاقة الذكي',
         theme_color: '#09090b',
         background_color: '#09090b',
@@ -23,7 +23,7 @@ export default defineConfig({
         orientation: 'portrait',
         icons: [
           {
-            src: 'pwa-icon.svg',
+            src: 'customer-icon.svg',
             sizes: '192x192 512x512',
             type: 'image/svg+xml',
             purpose: 'any maskable'

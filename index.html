@@ -11,9 +11,9 @@
     rel="stylesheet">
   <meta name="description" content="نظام إدارة صالونات الحلاقة الذكي" />
   <meta name="theme-color" content="#09090b" />
-  <link id="app-icon" rel="icon" type="image/svg+xml" href="/pwa-icon.svg" />
-  <link id="app-apple-icon" rel="apple-touch-icon" href="/pwa-icon.svg">
-  <title id="app-title">Barber Ticket — نظام إدارة صالونات الحلاقة</title>
+  <link id="app-icon" rel="icon" type="image/svg+xml" href="/customer-icon.svg" />
+  <link id="app-apple-icon" rel="apple-touch-icon" href="/customer-icon.svg">
+  <title id="app-title">Mon Coiffure — نظام إدارة صالونات الحلاقة</title>
 
   <!-- Dynamic Barber PWA Injection -->
   <script>
@@ -27,7 +27,9 @@
       manifestLink.href = '/barber-manifest.json';
       document.head.appendChild(manifestLink);
     } else if (window.location.hostname.includes('admin')) {
-      document.getElementById('app-title').textContent = 'Barber Ticket — الإدارة';
+      document.getElementById('app-icon').href = '/pwa-icon.svg';
+      document.getElementById('app-apple-icon').href = '/pwa-icon.svg';
+      document.getElementById('app-title').textContent = 'Mon Coiffure — الإدارة';
     } else {
       // The default VitePWA plugin will inject the default manifest automatically.
     }
