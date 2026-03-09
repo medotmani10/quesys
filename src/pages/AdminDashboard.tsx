@@ -296,6 +296,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [isManualTicketOpen, setIsManualTicketOpen] = useState(false);
   const [processingBarber, setProcessingBarber] = useState<string | null>(null);
+  const [submittingManual, setSubmittingManual] = useState(false);
 
   const [manualName, setManualName] = useState('');
   const [manualPhone, setManualPhone] = useState('');
@@ -398,45 +399,51 @@ export default function AdminDashboard() {
 
   const handleManualTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!shop) return;
+    if (!shop || submittingManual) return;
     if (!manualBarber) { toast.error('يرجى اختيار الحلاق'); return; }
-    const barberIndex = getBarberIndex(manualBarber);
-    const barberName = barbers.find(b => b.id === manualBarber)?.name;
-    const sessionId = `manual_${Date.now()}`;
+    setSubmittingManual(true);
+    try {
+      const barberIndex = getBarberIndex(manualBarber);
+      const barberName = barbers.find(b => b.id === manualBarber)?.name;
+      const sessionId = `manual_${Date.now()}`;
 
-    const { data: ticketData, error } = await supabase.rpc('create_ticket', {
-      p_shop_id: shop.id,
-      p_barber_id: manualBarber,
-      p_name: manualName.trim(),
-      p_phone: manualPhone.trim(),
-      p_people: manualPeople,
-      p_session_id: sessionId,
-    });
-
-    if (error) { toast.error('فشل في إنشاء التذكرة'); return; }
-
-    const insertedTicket = (Array.isArray(ticketData) ? ticketData[0] : ticketData) as Ticket;
-    const ticketCode = getTicketCode(barberIndex, insertedTicket.ticket_number);
-
-    toast.success(`تم إنشاء التذكرة ${ticketCode}`);
-    if (autoPrint) {
-      printThermalTicket({
-        ticketNumber: insertedTicket.ticket_number,
-        ticketId: insertedTicket.id,
-        customerName: manualName.trim(),
-        barberName,
-        barberIndex,
-        shopName: shop.name,
-        shopSlug: shop.slug,
-        peopleCount: manualPeople,
-        createdAt: new Date(),
+      const { data: ticketData, error } = await supabase.rpc('create_ticket', {
+        p_shop_id: shop.id,
+        p_barber_id: manualBarber,
+        p_name: manualName.trim(),
+        p_phone: manualPhone.trim(),
+        p_people: manualPeople,
+        p_session_id: sessionId,
       });
+
+      if (error) { toast.error('فشل في إنشاء التذكرة'); setSubmittingManual(false); return; }
+
+      const insertedTicket = (Array.isArray(ticketData) ? ticketData[0] : ticketData) as Ticket;
+      const ticketCode = getTicketCode(barberIndex, insertedTicket.ticket_number);
+
+      toast.success(`تم إنشاء التذكرة ${ticketCode}`);
+      if (autoPrint) {
+        printThermalTicket({
+          ticketNumber: insertedTicket.ticket_number,
+          ticketId: insertedTicket.id,
+          customerName: manualName.trim(),
+          barberName,
+          barberIndex,
+          shopName: shop.name,
+          shopSlug: shop.slug,
+          peopleCount: manualPeople,
+          createdAt: new Date(),
+        });
+      }
+    } catch { toast.error('حدث خطأ غير متوقع'); }
+    finally {
+      setSubmittingManual(false);
+      setIsManualTicketOpen(false);
+      setManualName('');
+      setManualPhone('');
+      setManualPeople(1);
+      setManualBarber('');
     }
-    setIsManualTicketOpen(false);
-    setManualName('');
-    setManualPhone('');
-    setManualPeople(1);
-    setManualBarber('');
   };
 
   const handleNextCustomer = async (barberId: string) => {
@@ -763,16 +770,17 @@ export default function AdminDashboard() {
                 </div>
               </button>
 
-              <button type="submit" className={cn(
+              <button type="submit" disabled={submittingManual || !manualBarber} className={cn(
                 'w-full rounded-xl h-14 font-black text-lg text-black mt-1',
                 'transition-all duration-150 active:scale-[0.98]',
                 autoPrint
                   ? 'bg-yellow-400 hover:bg-yellow-300 shadow-[0_4px_16px_-2px_rgba(250,204,21,0.5)]'
                   : 'bg-yellow-400 hover:bg-yellow-300',
+                (submittingManual || !manualBarber) && 'opacity-50 cursor-not-allowed scale-100'
               )}>
                 <span className="flex items-center justify-center gap-2">
-                  {autoPrint ? <Printer className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-                  {autoPrint ? 'إضافة وطباعة التذكرة' : 'إضافة التذكرة'}
+                  {submittingManual ? <Loader2 className="w-5 h-5 animate-spin" /> : (autoPrint ? <Printer className="w-5 h-5" /> : <Plus className="w-5 h-5" />)}
+                  {submittingManual ? 'جاري الإضافة...' : (autoPrint ? 'إضافة وطباعة التذكرة' : 'إضافة التذكرة')}
                 </span>
               </button>
             </form>
