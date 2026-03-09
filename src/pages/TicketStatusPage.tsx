@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { supabase, getOrCreateSessionId } from '@/lib/supabase';
 import type { Ticket, Barber, Shop } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Scissors, AlertCircle, Loader2, X, User, Users } from 'lucide-react';
@@ -47,15 +47,21 @@ export default function TicketStatusPage() {
     const loadTicket = async () => {
         if (!ticketId) return;
         try {
-            const { data: ticketData, error } = await supabase
-                .from('tickets')
-                .select('*')
-                .eq('id', ticketId)
-                .single();
+            const sessionId = await getOrCreateSessionId();
 
-            if (error || !ticketData) { setNotFound(true); setLoading(false); return; }
+            // Securely fetch ticket matching both ID and device fingerprint session
+            const { data: ticketData, error } = await supabase.rpc('get_my_ticket', {
+                p_ticket_id: ticketId,
+                p_session_id: sessionId
+            });
 
-            const t = ticketData as Ticket;
+            if (error || !ticketData || ticketData.length === 0) {
+                setNotFound(true);
+                setLoading(false);
+                return;
+            }
+
+            const t = ticketData[0] as Ticket;
             setTicket(t);
 
             // Load shop
@@ -120,12 +126,16 @@ export default function TicketStatusPage() {
 
     const handleCancel = async () => {
         if (!ticket) return;
+        const confirmed = window.confirm('هل أنت متأكد من إلغاء الحجز؟');
+        if (!confirmed) return;
+
         try {
-            const { error } = await supabase
-                .from('tickets')
-                .update({ status: 'canceled', updated_at: new Date().toISOString() })
-                .eq('id', ticket.id);
-            if (error) throw error;
+            const sessionId = await getOrCreateSessionId();
+            const { data, error } = await supabase.rpc('cancel_my_ticket', {
+                p_ticket_id: ticket.id,
+                p_session_id: sessionId
+            });
+            if (error || !data) throw error || new Error('Failed to cancel');
             toast.success('تم إلغاء التذكرة');
         } catch {
             toast.error('فشل إلغاء التذكرة');

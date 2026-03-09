@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MapPin, User, Phone, Users, Scissors, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import ActiveTicketCard from '@/components/booking/ActiveTicketCard';
 import ShopClosedScreen from '@/components/booking/ShopClosedScreen';
 
 /** Returns the per-barber display code, e.g. "A1" for the 1st barber, "B1" for the 2nd. */
@@ -25,8 +24,6 @@ export default function CustomerBookingPage() {
   const [shop, setShop] = useState<Shop | null>(null);
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [barberQueueCounts, setBarberQueueCounts] = useState<Record<string, number>>({});
-  const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
-  const [peopleAhead, setPeopleAhead] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -36,10 +33,6 @@ export default function CustomerBookingPage() {
   const [selectedBarber, setSelectedBarber] = useState<string>('');
 
   useEffect(() => { if (slug) loadShopData(); }, [slug]);
-
-  useEffect(() => {
-    if (activeTicket) return subscribeToTicketUpdates();
-  }, [activeTicket?.id]);
 
   useEffect(() => {
     if (!shop) return;
@@ -102,39 +95,25 @@ export default function CustomerBookingPage() {
       setBarberQueueCounts(counts);
 
       // Check for existing active ticket for this session
-      const sessionId = getOrCreateSessionId();
-      const { data: ticketsData } = await supabase.from('tickets').select('*').eq('shop_id', shopData.id).eq('user_session_id', sessionId).in('status', ['waiting', 'serving']).order('created_at', { ascending: false }).limit(1);
+      const sessionId = await getOrCreateSessionId();
+      const { data: ticketsData } = await supabase.from('tickets')
+        .select('id')
+        .eq('shop_id', shopData.id)
+        .eq('user_session_id', sessionId)
+        .in('status', ['waiting', 'serving'])
+        .order('created_at', { ascending: false })
+        .limit(1);
+
       if (ticketsData && ticketsData.length > 0) {
-        const ticket = ticketsData[0] as Ticket;
-        setActiveTicket(ticket);
-        await calculatePeopleAhead(ticket);
+        // Ticket found for this session -> Redirect to the dedicated URL
+        navigate(`/t/${ticketsData[0].id}`, { replace: true });
+        return;
       }
     } catch { toast.error('حدث خطأ في تحميل البيانات'); }
     finally { setLoading(false); }
   };
 
-  // FIX 4: Use server-side aggregation RPC instead of fetching all rows (N+1 fix)
-  const calculatePeopleAhead = async (ticket: Ticket) => {
-    const { data, error } = await supabase.rpc('get_people_ahead', {
-      p_shop_id: ticket.shop_id,
-      p_barber_id: ticket.barber_id,
-      p_created_at: ticket.created_at,
-    });
-    if (!error) setPeopleAhead(data ?? 0);
-  };
-
-  const subscribeToTicketUpdates = () => {
-    if (!activeTicket) return;
-    const subscription = supabase.channel(`ticket_${activeTicket.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `id=eq.${activeTicket.id}` }, (payload) => {
-        const updatedTicket = payload.new as Ticket;
-        setActiveTicket(updatedTicket);
-        if (updatedTicket.status === 'serving') toast.success('دورك الآن! تفضل للحلاق');
-        else if (updatedTicket.status === 'completed') { toast.info('تم إنهاء الخدمة، شكراً!'); setActiveTicket(null); }
-        else if (updatedTicket.status === 'canceled') { toast.error('تم إلغاء التذكرة'); setActiveTicket(null); }
-      }).subscribe();
-    return () => { supabase.removeChannel(subscription); };
-  };
+  // Realtime subscription logic has been removed as this page just redirects to /t/:ticketId now
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,7 +124,7 @@ export default function CustomerBookingPage() {
 
     setSubmitting(true);
     try {
-      const sessionId = getOrCreateSessionId();
+      const sessionId = await getOrCreateSessionId();
 
       // FIX 3: Single atomic RPC — eliminates race condition on ticket_number
       const { data: ticket, error } = await supabase.rpc('create_ticket', {
@@ -167,24 +146,13 @@ export default function CustomerBookingPage() {
 
       // create_ticket returns SETOF tickets — first row is the new ticket
       const newTicket = (Array.isArray(ticket) ? ticket[0] : ticket) as Ticket;
-      setActiveTicket(newTicket);
-      await calculatePeopleAhead(newTicket);
-      toast.success('تم إنشاء التذكرة!');
+      toast.success('تم إنشاء التذكرة بنجاح!');
+      navigate(`/t/${newTicket.id}`);
     } catch { toast.error('حدث خطأ غير متوقع'); }
     finally { setSubmitting(false); }
   };
 
-  const handleCancelTicket = async () => {
-    if (!activeTicket) return;
-    const confirmed = window.confirm('هل أنت متأكد من إلغاء الحجز؟');
-    if (!confirmed) return;
-    try {
-      const { error } = await supabase.from('tickets').update({ status: 'canceled', updated_at: new Date().toISOString() }).eq('id', activeTicket.id);
-      if (error) throw error;
-      toast.success('تم إلغاء التذكرة');
-      setActiveTicket(null);
-    } catch { toast.error('فشل إلغاء التذكرة'); }
-  };
+
 
   // ─── LOADING ───
   if (loading) return (
@@ -210,15 +178,7 @@ export default function CustomerBookingPage() {
   // ─── CLOSED ─── (extracted component)
   if (!shop.is_open) return <ShopClosedScreen shopName={shop.name} />;
 
-  // ─── ACTIVE TICKET ─── (extracted component)
-  if (activeTicket) return (
-    <ActiveTicketCard
-      ticket={activeTicket}
-      peopleAhead={peopleAhead}
-      barbers={barbers}
-      onCancel={handleCancelTicket}
-    />
-  );
+
 
   // ─── BOOKING FORM ───
   return (
