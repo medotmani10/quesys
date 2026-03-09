@@ -516,6 +516,52 @@ GRANT EXECUTE ON FUNCTION get_queue_status_public(UUID)                         
 GRANT EXECUTE ON FUNCTION process_next_customer(UUID, UUID)                     TO anon, authenticated;
 
 
+-- ─── STEP 9: SUPABASE REALTIME ──────────────────────────────────────────────
+--
+-- IMPORTANT: After DROP TABLE + CREATE TABLE, the new tables are NOT in the
+-- supabase_realtime publication and lose REPLICA IDENTITY FULL.
+-- This step MUST be run so that postgres_changes subscriptions work.
+--
+-- REPLICA IDENTITY FULL means Postgres sends the full old + new row in the
+-- WAL for UPDATE/DELETE, which is required for server-side column filters
+-- (e.g. shop_id=eq.<uuid>) to work correctly.
+
+ALTER TABLE tickets REPLICA IDENTITY FULL;
+ALTER TABLE barbers REPLICA IDENTITY FULL;
+ALTER TABLE shops   REPLICA IDENTITY FULL;
+
+-- Add (or re-add) our tables to the Supabase realtime publication.
+-- We use DO block to handle the case where the publication already covers
+-- all tables (FOR ALL TABLES), in which case we skip gracefully.
+DO $$
+BEGIN
+  -- Only add individual tables if the publication does NOT already cover
+  -- all tables (i.e. not a FOR ALL TABLES publication).
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime' AND puballtables = true
+  ) THEN
+    -- Remove stale entries first (in case of partial state), then re-add
+    BEGIN
+      ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS tickets;
+    EXCEPTION WHEN undefined_object THEN NULL;
+    END;
+    BEGIN
+      ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS barbers;
+    EXCEPTION WHEN undefined_object THEN NULL;
+    END;
+    BEGIN
+      ALTER PUBLICATION supabase_realtime DROP TABLE IF EXISTS shops;
+    EXCEPTION WHEN undefined_object THEN NULL;
+    END;
+
+    ALTER PUBLICATION supabase_realtime ADD TABLE tickets;
+    ALTER PUBLICATION supabase_realtime ADD TABLE barbers;
+    ALTER PUBLICATION supabase_realtime ADD TABLE shops;
+  END IF;
+END $$;
+
+
 -- ─── DONE ────────────────────────────────────────────────────────────────────
 -- Schema is ready. All previous patches are consolidated here.
+-- Run this file ONCE in Supabase SQL Editor. Realtime is now active.
 -- ─────────────────────────────────────────────────────────────────────────────

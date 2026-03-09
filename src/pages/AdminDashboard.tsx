@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import type { Shop, Barber, Ticket } from '@/types/database';
@@ -306,15 +306,60 @@ export default function AdminDashboard() {
   const [autoPrint, setAutoPrint] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
+  // ── Stable refs so subscription callbacks always read the latest values ──
+  const soundEnabledRef = useRef(soundEnabled);
+  useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
+
+  const loadTicketsRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
   // initialise audio context on first user interaction — improves autoplay policy
-  const unlockAudio = () => { if (soundEnabled) playTicketSound(); };
+  const unlockAudio = () => { if (soundEnabledRef.current) playTicketSound(); };
   useEffect(() => {
     window.addEventListener('pointerdown', unlockAudio, { once: true });
     return () => window.removeEventListener('pointerdown', unlockAudio);
   }, []);
 
   useEffect(() => { checkAuth(); }, []);
-  useEffect(() => { if (shop) { const unsub = subscribeToUpdates(); loadTickets(); return unsub; } }, [shop?.id]);
+
+  // Subscribe once when shop loads; use refs for callbacks to avoid stale closures
+  useEffect(() => {
+    if (!shop) return;
+    loadTickets();
+
+    const channel = supabase.channel(`admin_shop_${shop.id}`)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` },
+        (payload) => {
+          const isManual = (payload.new as any)?.user_session_id?.startsWith('manual_');
+          if (!isManual && soundEnabledRef.current) playTicketSound();
+          loadTicketsRef.current();
+        }
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` },
+        () => loadTicketsRef.current()
+      )
+      .on('postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` },
+        () => loadTicketsRef.current()
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'barbers', filter: `shop_id=eq.${shop.id}` },
+        async () => {
+          const { data: bData } = await supabase.from('barbers').select('*').eq('shop_id', shop.id).order('created_at', { ascending: true });
+          if (bData) setBarbers(bData as Barber[]);
+        }
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'shops', filter: `id=eq.${shop.id}` },
+        (payload) => setShop(payload.new as Shop)
+      )
+      .subscribe((status) => {
+        console.log('[AdminDashboard] Realtime status:', status);
+      });
+
+    return () => { supabase.removeChannel(channel); };
+  }, [shop?.id]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -355,40 +400,8 @@ export default function AdminDashboard() {
     setTickets((data as Ticket[]) || []);
   }, [shop]);
 
-  const subscribeToUpdates = () => {
-    if (!shop) return;
-    const sub = supabase.channel(`admin_shop_${shop.id}`)
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` },
-        (payload) => {
-          // Only chime for customer-created tickets (not manual ones from admin)
-          const isManual = (payload.new as any)?.user_session_id?.startsWith('manual_');
-          if (!isManual && soundEnabled) playTicketSound();
-          loadTickets();
-        }
-      )
-      .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` },
-        () => loadTickets()
-      )
-      .on('postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` },
-        () => loadTickets()
-      )
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'barbers', filter: `shop_id=eq.${shop.id}` },
-        async () => {
-          const { data: bData } = await supabase.from('barbers').select('*').eq('shop_id', shop.id).order('created_at', { ascending: true });
-          if (bData) setBarbers(bData as Barber[]);
-        }
-      )
-      .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'shops', filter: `id=eq.${shop.id}` },
-        (payload) => setShop(payload.new as Shop)
-      )
-      .subscribe();
-    return () => { sub.unsubscribe(); };
-  };
+  // Keep the ref always pointing to the latest loadTickets
+  useEffect(() => { loadTicketsRef.current = loadTickets; }, [loadTickets]);
 
   const toggleShopStatus = async () => {
     if (!shop) return;
