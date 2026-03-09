@@ -400,26 +400,28 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!shop) return;
     if (!manualBarber) { toast.error('يرجى اختيار الحلاق'); return; }
-    const { data: ticketNumberData, error: tErr } = await supabase.rpc('get_next_ticket_number', {
-      p_shop_id: shop.id,
-      p_barber_id: manualBarber
-    });
-    if (tErr) { toast.error('فشل في إنشاء التذكرة'); return; }
-    const ticketNumber = ticketNumberData as number;
     const barberIndex = getBarberIndex(manualBarber);
     const barberName = barbers.find(b => b.id === manualBarber)?.name;
-    const ticketCode = getTicketCode(barberIndex, ticketNumber);
-    const { data: insertedTicket, error } = await supabase.from('tickets').insert({
-      shop_id: shop.id, barber_id: manualBarber,
-      customer_name: manualName.trim(), phone_number: manualPhone.trim(),
-      people_count: manualPeople, ticket_number: ticketNumber,
-      user_session_id: `manual_${Date.now()}`, status: 'waiting',
-    }).select().single();
+    const sessionId = `manual_${Date.now()}`;
+
+    const { data: ticketData, error } = await supabase.rpc('create_ticket', {
+      p_shop_id: shop.id,
+      p_barber_id: manualBarber,
+      p_name: manualName.trim(),
+      p_phone: manualPhone.trim(),
+      p_people: manualPeople,
+      p_session_id: sessionId,
+    });
+
     if (error) { toast.error('فشل في إنشاء التذكرة'); return; }
+
+    const insertedTicket = (Array.isArray(ticketData) ? ticketData[0] : ticketData) as Ticket;
+    const ticketCode = getTicketCode(barberIndex, insertedTicket.ticket_number);
+
     toast.success(`تم إنشاء التذكرة ${ticketCode}`);
     if (autoPrint) {
       printThermalTicket({
-        ticketNumber,
+        ticketNumber: insertedTicket.ticket_number,
         ticketId: insertedTicket.id,
         customerName: manualName.trim(),
         barberName,
