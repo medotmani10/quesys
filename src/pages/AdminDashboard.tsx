@@ -314,7 +314,7 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => { checkAuth(); }, []);
-  useEffect(() => { if (shop) { subscribeToUpdates(); loadTickets(); } }, [shop?.id]);
+  useEffect(() => { if (shop) { const unsub = subscribeToUpdates(); loadTickets(); return unsub; } }, [shop?.id]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();

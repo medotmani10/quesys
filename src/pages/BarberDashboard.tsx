@@ -156,19 +156,18 @@ export default function BarberDashboard() {
         if (!servingTicket || !shop || !barber) return;
         setActionLoading(true);
         try {
-            const { data: success, error } = await supabase.rpc('barber_complete_service', {
-                p_ticket_id: servingTicket.id,
-                p_barber_id: barber.id,
-                p_shop_id: shop.id
-            });
+            const { error } = await supabase
+                .from('tickets')
+                .update({ status: 'completed', updated_at: new Date().toISOString() })
+                .eq('id', servingTicket.id)
+                .eq('barber_id', barber.id);
 
             if (error) throw error;
-            if (!success) throw new Error('لم يتم تحديث أي سجل');
 
             toast.success('تم إنهاء الخدمة بنجاح');
             setServingTicket(null);
             await fetchTickets(shop.id, barber.id);
-        } catch (error) {
+        } catch {
             toast.error('حدث خطأ أثناء إنهاء الخدمة');
         } finally {
             setActionLoading(false);
@@ -179,18 +178,22 @@ export default function BarberDashboard() {
         if (!shop || !barber) return;
         setActionLoading(true);
         try {
-            // Use the new RPC to pull the next assigned or unassigned customer
-            const { data, error } = await supabase.rpc('process_barber_next_customer', {
+            // Use the existing process_next_customer RPC
+            const { data, error } = await supabase.rpc('process_next_customer', {
                 p_barber_id: barber.id,
                 p_shop_id: shop.id
             });
 
-            if (error) throw error;
-
-            if (data && data.length > 0) {
+            if (error) {
+                if (error.message?.includes('no_customers_waiting') || error.message?.includes('no customers waiting')) {
+                    toast.info('لا يوجد زبائن في قائمة الانتظار الحالية');
+                } else {
+                    throw error;
+                }
+            } else if (data && data.length > 0) {
                 toast.success(`تم استدعاء: ${data[0].customer_name}`);
             } else {
-                toast.error('لا يوجد زبائن في قائمة الانتظار الحالية');
+                toast.info('لا يوجد زبائن في قائمة الانتظار الحالية');
             }
             // Realtime listener will automatically update the UI shortly, but we fetch manually just in case
             await fetchTickets(shop.id, barber.id);

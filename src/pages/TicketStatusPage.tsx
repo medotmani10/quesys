@@ -29,6 +29,21 @@ export default function TicketStatusPage() {
         }
     }, [ticket?.id, ticket?.status]);
 
+    // Also refresh peopleAhead whenever any ticket in the same shop+barber queue changes
+    useEffect(() => {
+        if (!ticket || ticket.status !== 'waiting') return;
+        const shopId = ticket.shop_id;
+        const chan = supabase
+            .channel(`queue_watch_${ticket.id}`)
+            .on('postgres_changes', {
+                event: '*', schema: 'public', table: 'tickets',
+                filter: `shop_id=eq.${shopId}`,
+            }, () => calculatePeopleAhead(ticket))
+            .subscribe();
+        return () => { supabase.removeChannel(chan); };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [ticket?.id, ticket?.status]);
+
     const loadTicket = async () => {
         if (!ticketId) return;
         try {
@@ -70,21 +85,12 @@ export default function TicketStatusPage() {
     };
 
     const calculatePeopleAhead = async (t: Ticket) => {
-        let query = supabase
-            .from('tickets')
-            .select('people_count')
-            .eq('shop_id', t.shop_id)
-            .eq('status', 'waiting')
-            .lt('created_at', t.created_at);
-
-        if (t.barber_id) query = query.eq('barber_id', t.barber_id);
-        const { data } = await query;
-        if (data) {
-            const total = data.reduce((sum, row) => sum + (row.people_count || 1), 0);
-            setPeopleAhead(total);
-        } else {
-            setPeopleAhead(0);
-        }
+        const { data, error } = await supabase.rpc('get_people_ahead', {
+            p_shop_id: t.shop_id,
+            p_barber_id: t.barber_id,
+            p_created_at: t.created_at,
+        });
+        if (!error) setPeopleAhead(data ?? 0);
     };
 
     const subscribeToUpdates = () => {

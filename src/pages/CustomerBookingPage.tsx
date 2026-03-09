@@ -43,7 +43,9 @@ export default function CustomerBookingPage() {
 
   useEffect(() => {
     if (!shop) return;
-    const channel = supabase.channel(`customer_booking_barbers_${shop.id}`)
+
+    // Update barber list + queue counts + shop status in realtime
+    const channel = supabase.channel(`customer_booking_${shop.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'barbers', filter: `shop_id=eq.${shop.id}` }, async () => {
         const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', shop.id).eq('is_active', true).order('created_at', { ascending: true });
         if (barbersData) {
@@ -59,6 +61,20 @@ export default function CustomerBookingPage() {
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'shops', filter: `id=eq.${shop.id}` }, (payload) => {
         setShop(payload.new as Shop);
+      })
+      // Refresh queue counts whenever any ticket in the shop changes
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` }, async () => {
+        const { data: waitingTickets } = await supabase
+          .from('tickets')
+          .select('barber_id, people_count')
+          .eq('shop_id', shop.id)
+          .eq('status', 'waiting');
+        const counts: Record<string, number> = {};
+        barbers.forEach(b => { counts[b.id] = 0; });
+        (waitingTickets || []).forEach((t: any) => {
+          if (t.barber_id && counts[t.barber_id] !== undefined) counts[t.barber_id] += (t.people_count || 1);
+        });
+        setBarberQueueCounts(counts);
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };

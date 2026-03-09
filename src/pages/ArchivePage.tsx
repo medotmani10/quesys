@@ -36,6 +36,26 @@ export default function ArchivePage() {
     }
   }, [shop?.id, selectedDate, timeFilter]);
 
+  // ─── Realtime subscription: re-fetch archive when tickets change ───
+  useEffect(() => {
+    if (!shop) return;
+    const channel = supabase
+      .channel(`archive_${shop.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` },
+        () => loadTickets()
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` },
+        () => loadTickets()
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shop?.id, selectedDate, timeFilter]);
+
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
