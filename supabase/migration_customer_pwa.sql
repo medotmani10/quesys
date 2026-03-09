@@ -58,3 +58,22 @@ DROP POLICY IF EXISTS "tickets_update_own_cancel" ON tickets;
 CREATE UNIQUE INDEX IF NOT EXISTS tickets_unique_active_session
     ON tickets (shop_id, user_session_id)
     WHERE status IN ('waiting', 'serving');
+
+-- 5. Fix Realtime for Customers + Prevent PII Leak (Column Level Security)
+-- Supabase Realtime requires a SELECT policy to broadcast changes.
+-- We want to allow anonymous users to receive Realtime updates for tickets, 
+-- but we MUST NOT leak customer_name, phone_number, or user_session_id.
+-- We solve this using Column Level Security (CLS) for the 'anon' role.
+
+-- Revoke full table SELECT access from anon
+REVOKE SELECT ON tickets FROM anon;
+
+-- Grant SELECT access ONLY to safe, non-PII columns
+GRANT SELECT (id, shop_id, barber_id, ticket_number, status, people_count, created_at, updated_at) ON tickets TO anon;
+
+-- Now we can safely allow anon to SELECT any row, because they can only see safe columns.
+-- This ensures Supabase Realtime `postgres_changes` will successfully broadcast ticket status updates to the customer's browser.
+CREATE POLICY "tickets_select_anon_safe"
+    ON tickets FOR SELECT
+    TO anon
+    USING (true);

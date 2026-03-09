@@ -107,8 +107,13 @@ export default function TicketStatusPage() {
                 event: 'UPDATE', schema: 'public', table: 'tickets',
                 filter: `id=eq.${ticket.id}`,
             }, (payload) => {
-                const updated = payload.new as Ticket;
-                setTicket(updated);
+                const updated = payload.new as Partial<Ticket>;
+
+                const mergedTicket = { ...ticket, ...updated } as Ticket;
+
+                // Merge the sparse update (which omits PII due to Column Level Security)
+                setTicket(mergedTicket);
+
                 if (updated.status === 'serving') {
                     toast.success('🎉 دورك الآن! تفضل للحلاق');
                 } else if (updated.status === 'completed') {
@@ -116,7 +121,7 @@ export default function TicketStatusPage() {
                 } else if (updated.status === 'canceled') {
                     toast.error('❌ تم إلغاء تذكرتك');
                 } else if (updated.status === 'waiting') {
-                    calculatePeopleAhead(updated);
+                    calculatePeopleAhead(mergedTicket);
                 }
             })
             .subscribe();
