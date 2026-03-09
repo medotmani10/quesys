@@ -70,9 +70,10 @@ export default function CustomerBookingPage() {
           .eq('shop_id', shop.id)
           .eq('status', 'waiting');
         const counts: Record<string, number> = {};
-        barbers.forEach(b => { counts[b.id] = 0; });
         (waitingTickets || []).forEach((t: any) => {
-          if (t.barber_id && counts[t.barber_id] !== undefined) counts[t.barber_id] += (t.people_count || 1);
+          if (t.barber_id) {
+            counts[t.barber_id] = (counts[t.barber_id] || 0) + (t.people_count || 1);
+          }
         });
         setBarberQueueCounts(counts);
       })
