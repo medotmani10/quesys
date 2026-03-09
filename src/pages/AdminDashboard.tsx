@@ -416,7 +416,7 @@ export default function AdminDashboard() {
         p_session_id: sessionId,
       });
 
-      if (error) { console.error('Error creating ticket:', error); toast.error('فشل في إنشاء التذكرة'); setSubmittingManual(false); return; }
+      if (error) { toast.error('فشل في إنشاء التذكرة'); setSubmittingManual(false); return; }
 
       const insertedTicket = (Array.isArray(ticketData) ? ticketData[0] : ticketData) as Ticket;
       const ticketCode = getTicketCode(barberIndex, insertedTicket.ticket_number);
