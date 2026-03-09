@@ -73,6 +73,7 @@ GRANT SELECT (id, shop_id, barber_id, ticket_number, customer_name, status, peop
 
 -- Now we can safely allow anon to SELECT any row, because they can only see safe columns.
 -- This ensures Supabase Realtime `postgres_changes` will successfully broadcast ticket status updates to the customer's browser.
+DROP POLICY IF EXISTS "tickets_select_anon_safe" ON tickets;
 CREATE POLICY "tickets_select_anon_safe"
     ON tickets FOR SELECT
     TO anon
