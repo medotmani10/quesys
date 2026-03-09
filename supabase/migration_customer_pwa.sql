@@ -68,8 +68,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS tickets_unique_active_session
 -- Revoke full table SELECT access from anon
 REVOKE SELECT ON tickets FROM anon;
 
--- Grant SELECT access ONLY to safe, non-PII columns
-GRANT SELECT (id, shop_id, barber_id, ticket_number, status, people_count, created_at, updated_at) ON tickets TO anon;
+-- Grant SELECT access ONLY to safe, non-PII columns (customer_name is safe enough for public displays like TV)
+GRANT SELECT (id, shop_id, barber_id, ticket_number, customer_name, status, people_count, created_at, updated_at) ON tickets TO anon;
 
 -- Now we can safely allow anon to SELECT any row, because they can only see safe columns.
 -- This ensures Supabase Realtime `postgres_changes` will successfully broadcast ticket status updates to the customer's browser.
