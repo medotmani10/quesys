@@ -574,12 +574,12 @@ function BarberColumn({
         <div className="flex flex-col h-full min-w-0 gap-6">
 
             {/* Now Serving Card */}
-            <div className="flex flex-col bg-zinc-900/50 border-2 border-amber-500/20 rounded-[2rem] p-8 relative overflow-hidden min-h-[40vh] shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+            <div className="flex flex-col flex-[1.2] min-h-0 bg-zinc-900/50 border-2 border-amber-500/20 rounded-[2rem] p-6 lg:p-8 relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
                 {/* Subtle Background Pattern */}
                 <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500 via-transparent to-transparent"></div>
 
                 {/* Status Indicator */}
-                <div className="flex items-center gap-4 mb-4 relative z-10">
+                <div className="flex items-center gap-4 mb-2 lg:mb-4 relative z-10 shrink-0">
                     <span className="relative flex h-4 w-4">
                         <span className={`absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75 ${bq.serving ? 'animate-ping' : ''}`}></span>
                         <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500"></span>
@@ -588,14 +588,14 @@ function BarberColumn({
                 </div>
 
                 {/* Ticket Number */}
-                <div className="flex-1 flex flex-col items-center justify-center relative z-10 animate-pulse-subtle my-6">
+                <div className="flex-1 flex flex-col items-center justify-center relative z-10 animate-pulse-subtle my-2 min-h-0">
                     {bq.serving ? (
                         <>
-                            <span className="text-zinc-500 text-sm md:text-lg font-bold uppercase tracking-[0.3em] mb-2 md:mb-4">رقم التذكرة</span>
+                            <span className="text-zinc-500 text-sm md:text-base font-bold uppercase tracking-[0.3em] mb-1 md:mb-2 shrink-0">رقم التذكرة</span>
                             <div
-                                className={`font-black text-amber-500 text-glow-amber tracking-tighter leading-none ${bq.pulsing ? 'animate-tv-pulse' : ''}`}
+                                className={`font-black text-amber-500 text-glow-amber tracking-tighter leading-none shrink-0 min-h-0 ${bq.pulsing ? 'animate-tv-pulse' : ''}`}
                                 style={{
-                                    fontSize: totalBarbers >= 4 ? '7rem' : totalBarbers === 3 ? '10rem' : '12rem'
+                                    fontSize: totalBarbers >= 4 ? 'clamp(4rem, 10vh, 7rem)' : totalBarbers === 3 ? 'clamp(5rem, 15vh, 10rem)' : 'clamp(6rem, 20vh, 12rem)'
                                 }}
                             >
                                 {getTicketCode(barberIndex, bq.serving.ticket_number)}
@@ -610,15 +610,15 @@ function BarberColumn({
                 </div>
 
                 {/* Barber & Customer Info Pills */}
-                <div className="mt-auto flex flex-wrap gap-4 relative z-10">
-                    <div className="px-6 py-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3">
-                        <span className="text-xl">✂️</span>
-                        <span className="text-lg lg:text-xl font-bold text-slate-200 truncate max-w-[150px] lg:max-w-full">{bq.barber.name}</span>
+                <div className="mt-auto flex flex-wrap gap-2 lg:gap-4 relative z-10 shrink-0">
+                    <div className="px-4 py-2 lg:px-6 lg:py-3 bg-amber-500/10 border border-amber-500/20 rounded-xl lg:rounded-2xl flex items-center gap-2 lg:gap-3">
+                        <span className="text-lg lg:text-xl">✂️</span>
+                        <span className="text-base lg:text-xl font-bold text-slate-200 truncate max-w-[120px] lg:max-w-full">{bq.barber.name}</span>
                     </div>
                     {bq.serving?.customer_name && (
-                        <div className="px-6 py-3 bg-zinc-800 rounded-2xl flex items-center gap-3 border border-zinc-700">
-                            <span className="text-xl">👤</span>
-                            <span className="text-lg lg:text-xl font-bold text-slate-200 truncate max-w-[150px] lg:max-w-full">{bq.serving.customer_name}</span>
+                        <div className="px-4 py-2 lg:px-6 lg:py-3 bg-zinc-800 rounded-xl lg:rounded-2xl flex items-center gap-2 lg:gap-3 border border-zinc-700">
+                            <span className="text-lg lg:text-xl">👤</span>
+                            <span className="text-base lg:text-xl font-bold text-slate-200 truncate max-w-[120px] lg:max-w-full">{bq.serving.customer_name}</span>
                             {bq.serving.people_count > 1 && (
                                 <span className="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded text-sm font-bold ml-1">
                                     {bq.serving.people_count}
@@ -630,9 +630,9 @@ function BarberColumn({
             </div>
 
             {/* Up Next / Queue Sidebar (Underneath) */}
-            <div className="flex flex-col flex-1 min-h-0 bg-black/20 rounded-[2rem] p-6 border border-zinc-800/50">
-                <div className="flex items-center justify-between mb-6 px-2">
-                    <h3 className="text-zinc-400 text-xl font-bold uppercase tracking-widest">في الانتظار التالي</h3>
+            <div className="flex flex-col flex-[1] min-h-0 bg-black/20 rounded-[2rem] p-4 lg:p-6 border border-zinc-800/50">
+                <div className="flex items-center justify-between mb-4 lg:mb-6 px-2 shrink-0">
+                    <h3 className="text-zinc-400 text-lg lg:text-xl font-bold uppercase tracking-widest">في الانتظار التالي</h3>
                     {bq.waiting.length > 0 && (
                         <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold text-xs px-2 py-1 rounded-md">
                             {bq.waiting.reduce((acc, t) => acc + (t.people_count || 1), 0)} أشخاص
