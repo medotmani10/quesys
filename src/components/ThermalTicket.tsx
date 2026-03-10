@@ -169,7 +169,73 @@ export function ThermalTicket({
     );
 }
 
-/* ─── Print function — opens print dialog + auto-downloads PDF ─── */
+// Helper: Convert Canvas to ESC/POS Raster Bit-Image (GS v 0)
+async function canvasToEscPos(canvas: HTMLCanvasElement): Promise<Uint8Array> {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Could not get 2d context for ESC/POS conversion');
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const imageData = ctx.getImageData(0, 0, width, height);
+
+    // ESC/POS raster bit-image command
+    const xL = Math.floor((width + 7) / 8) % 256;
+    const xH = Math.floor(Math.floor((width + 7) / 8) / 256);
+    const yL = height % 256;
+    const yH = Math.floor(height / 256);
+
+    // Command prefix (GS v 0 \0 xL xH yL yH)
+    const prefix = new Uint8Array([0x1D, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
+
+    const bytesPerLine = Math.floor((width + 7) / 8);
+    const imageBytes = new Uint8Array(bytesPerLine * height);
+
+    let k = 0;
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < bytesPerLine; x++) {
+            let byte = 0;
+            for (let b = 0; b < 8; b++) {
+                const px = x * 8 + b;
+                if (px < width) {
+                    const idx = (y * width + px) * 4;
+                    const r = imageData.data[idx];
+                    const g = imageData.data[idx + 1];
+                    const bVal = imageData.data[idx + 2];
+                    const a = imageData.data[idx + 3];
+
+                    // Monochrome conversion (if transparent or bright, render white/0, otherwise black/1)
+                    if (a > 128) {
+                        const luminance = 0.299 * r + 0.587 * g + 0.114 * bVal;
+                        if (luminance < 128) {
+                            byte |= (1 << (7 - b));
+                        }
+                    }
+                }
+            }
+            imageBytes[k++] = byte;
+        }
+    }
+
+    const cutCommand = new Uint8Array([0x1D, 0x56, 0x41, 0x10]); // Cut paper
+
+    const finalBuffer = new Uint8Array(prefix.length + imageBytes.length + cutCommand.length);
+    finalBuffer.set(prefix, 0);
+    finalBuffer.set(imageBytes, prefix.length);
+    finalBuffer.set(cutCommand, prefix.length + imageBytes.length);
+
+    return finalBuffer;
+}
+
+// Helper: Send chunked GATT data
+async function sendToPrinter(characteristic: BluetoothRemoteGATTCharacteristic, data: Uint8Array) {
+    const MTU = 512; // Typical MTU size for cheap thermal printers
+    for (let i = 0; i < data.length; i += MTU) {
+        const chunk = data.slice(i, i + MTU);
+        await characteristic.writeValue(chunk);
+    }
+}
+
+/* ─── Print function — Web Bluetooth (ESC/POS) logic + Fallback ─── */
 export function printThermalTicket(props: ThermalTicketProps) {
     const container = document.createElement('div');
     // Position off-screen so it doesn't flash
@@ -186,70 +252,110 @@ export function printThermalTicket(props: ThermalTicketProps) {
         const ticketEl = container.querySelector('#thermal-ticket-content') as HTMLElement;
         if (!ticketEl) { document.body.removeChild(container); return; }
 
-        // ── 1. PDF download (Fixed Arabic using html-to-image + jsPDF) ──
-        try {
-            const { toPng } = await import('html-to-image');
-            const { jsPDF } = await import('jspdf');
+        let successBluetooth = false;
 
-            const code = props.barberIndex !== undefined && props.barberIndex >= 0
-                ? `${String.fromCharCode(65 + (props.barberIndex % 26))}${props.ticketNumber}`
-                : `${props.ticketNumber}`;
+        // Try Bluetooth Printing First!
+        if (navigator.bluetooth) {
+            try {
+                // We use html2canvas to capture the native rendered Arabic font directly to a canvas
+                const { default: html2canvas } = await import('html2canvas');
 
-            // We use html-to-image which properly renders Arabic text natively
-            const dataUrl = await toPng(ticketEl, {
-                quality: 1,
-                backgroundColor: '#ffffff',
-                pixelRatio: 3, // High-res
-                width: 220, // explicitly enforce the width
-                style: { margin: '0' }
-            });
+                const canvas = await html2canvas(ticketEl, {
+                    scale: 2, // High resolution
+                    backgroundColor: '#ffffff',
+                    width: 220, // 58mm equivalent
+                    useCORS: true,
+                });
 
-            const pdf = new jsPDF({
-                unit: 'mm',
-                format: [58, 180],
-                orientation: 'portrait'
-            });
+                // Request device
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    // Generic attributes for BLE printers
+                    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
+                });
 
-            pdf.addImage(dataUrl, 'PNG', 0, 0, 58, 180);
-            pdf.save(`تذكرة-${code}-${props.customerName}.pdf`);
-        } catch (err) {
-            console.error('PDF download failed:', err);
+                if (device.gatt) {
+                    const server = await device.gatt.connect();
+                    const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+                    const characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+
+                    const escPosData = await canvasToEscPos(canvas);
+                    await sendToPrinter(characteristic, escPosData);
+
+                    device.gatt.disconnect();
+                    successBluetooth = true;
+                }
+            } catch (err) {
+                console.warn('Bluetooth Printing Failed/Cancelled, falling back to PDF/Print Dialog', err);
+            }
         }
 
-        const printWindow = window.open('', '_blank', 'width=250,height=620');
-        if (printWindow) {
-            const code = props.barberIndex !== undefined && props.barberIndex >= 0
-                ? `${String.fromCharCode(65 + (props.barberIndex % 26))}${props.ticketNumber}`
-                : `${props.ticketNumber}`;
+        // ── Fallback logic: standard PDF download / window.print if Bluetooth fails
+        if (!successBluetooth) {
+            try {
+                const { toPng } = await import('html-to-image');
+                const { jsPDF } = await import('jspdf');
 
-            printWindow.document.write(`
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-  <meta charset="UTF-8">
-  <title>تذكرة #${code}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    @page { size: 58mm auto; margin: 0; }
-    body { font-family: 'Cairo', monospace; background: #fff; color: #000; width: 58mm; }
-    @media print { body { width: 58mm; } }
-  </style>
-</head>
-<body>
-  ${sanitizeHtml(ticketEl.outerHTML)}
-  <script>
-    window.onload = function() {
-      setTimeout(function() {
-        window.print();
-        setTimeout(function() { window.close(); }, 500);
-      }, 800);
-    };
-  </script>
-</body>
-</html>`);
-            printWindow.document.close();
+                const code = props.barberIndex !== undefined && props.barberIndex >= 0
+                    ? `${String.fromCharCode(65 + (props.barberIndex % 26))}${props.ticketNumber}`
+                    : `${props.ticketNumber}`;
+
+                // We use html-to-image which properly renders Arabic text natively
+                const dataUrl = await toPng(ticketEl, {
+                    quality: 1,
+                    backgroundColor: '#ffffff',
+                    pixelRatio: 3, // High-res
+                    width: 220, // explicitly enforce the width
+                    style: { margin: '0' }
+                });
+
+                const pdf = new jsPDF({
+                    unit: 'mm',
+                    format: [58, 180],
+                    orientation: 'portrait'
+                });
+
+                pdf.addImage(dataUrl, 'PNG', 0, 0, 58, 180);
+                pdf.save(`تذكرة-${code}-${props.customerName}.pdf`);
+            } catch (err) {
+                console.error('PDF download failed:', err);
+            }
+
+            const printWindow = window.open('', '_blank', 'width=250,height=620');
+            if (printWindow) {
+                const code = props.barberIndex !== undefined && props.barberIndex >= 0
+                    ? `${String.fromCharCode(65 + (props.barberIndex % 26))}${props.ticketNumber}`
+                    : `${props.ticketNumber}`;
+
+                printWindow.document.write(`
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+      <meta charset="UTF-8">
+      <title>تذكرة #${code}</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        @page { size: 58mm auto; margin: 0; }
+        body { font-family: 'Cairo', monospace; background: #fff; color: #000; width: 58mm; }
+        @media print { body { width: 58mm; } }
+      </style>
+    </head>
+    <body>
+      ${sanitizeHtml(ticketEl.outerHTML)}
+      <script>
+        window.onload = function() {
+          setTimeout(function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+          }, 800);
+        };
+      </script>
+    </body>
+    </html>`);
+                printWindow.document.close();
+            }
         }
 
         root.unmount();
