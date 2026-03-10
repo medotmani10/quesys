@@ -102,6 +102,11 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           {/* TV Display for shops */}
           <Route path="/:slug/tv" element={<TVDisplayPage />} />
+          {/* Customer booking & ticket status on main domain */}
+          <Route path="/:slug" element={<CustomerBookingPage />} />
+          <Route path="/:slug/ticket/:ticketId" element={<TicketStatusPage />} />
+          {/* Redirects */}
+          <Route path="/t/:ticketId" element={<TicketStatusPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Toaster position="top-center" richColors />
