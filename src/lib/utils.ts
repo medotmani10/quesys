@@ -28,7 +28,7 @@ export function getCustomerBaseUrl() {
   }
 
   // Use main domain for customers to ensure it works without subdomain config
-  return 'https://barberticket.vercel.app';
+  return 'https://costumer-barberticket.vercel.app';
 }
 
 export function getBarberBaseUrl() {
