@@ -18,7 +18,7 @@ import { playTicketSound } from '@/lib/notificationSound';
 import { getTicketCode } from '@/lib/utils';
 
 /* ─── helpers ─── */
-import { cn, getCustomerBaseUrl, getBarberBaseUrl } from '@/lib/utils';
+import { cn, getCustomerBaseUrl, getBarberBaseUrl, getMainBaseUrl } from '@/lib/utils';
 
 /* ─── StatCard ─── */
 function StatCard({ label, value, color, sub }: { label: string; value: number; color: string; sub?: string }) {
@@ -53,6 +53,7 @@ function StatCard({ label, value, color, sub }: { label: string; value: number; 
 function QuickLinks({ shop }: { shop: Shop }) {
   const customerBase = getCustomerBaseUrl();
   const barberBase = getBarberBaseUrl();
+  const mainBase = getMainBaseUrl();
 
   const links = [
     {
@@ -66,7 +67,7 @@ function QuickLinks({ shop }: { shop: Shop }) {
     {
       title: 'شاشة العرض (TV)',
       desc: 'لعرض حالة الطابور في الصالون',
-      url: `${customerBase}/${shop.slug}/tv`,
+      url: `${mainBase}/${shop.slug}/tv`,
       icon: <MonitorPlay className="w-5 h-5 text-purple-400" />,
       themeClasses: 'hover:border-purple-500/30 hover:shadow-[0_8px_32px_-4px_rgba(168,85,247,0.15)]',
       iconClasses: 'bg-purple-500/10 border-purple-500/20'
@@ -74,7 +75,7 @@ function QuickLinks({ shop }: { shop: Shop }) {
     {
       title: 'تطبيق الحلاقين',
       desc: 'للوصول إلى لوحة تحكم الحلاق',
-      url: `${barberBase}/${shop.slug}/barber/login`,
+      url: `${barberBase}/${shop.slug}/barber`,
       icon: <Smartphone className="w-5 h-5 text-emerald-400" />,
       themeClasses: 'hover:border-emerald-500/30 hover:shadow-[0_8px_32px_-4px_rgba(16,185,129,0.15)]',
       iconClasses: 'bg-emerald-500/10 border-emerald-500/20'

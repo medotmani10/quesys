@@ -9,7 +9,7 @@ import { getTicketCode } from '@/lib/utils';
 import { playTicketSound } from '@/lib/notificationSound';
 
 export default function TicketStatusPage() {
-    const { ticketId } = useParams<{ ticketId: string }>();
+    const { slug, ticketId } = useParams<{ slug?: string, ticketId: string }>();
     const navigate = useNavigate();
 
     const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -51,7 +51,15 @@ export default function TicketStatusPage() {
 
             // Load shop
             const { data: shopData } = await supabase.from('shops').select('*').eq('id', t.shop_id).single();
-            if (shopData) setShop(shopData as Shop);
+            if (shopData) {
+                const s = shopData as Shop;
+                setShop(s);
+
+                // If the URL slug is missing or doesn't match the shop, redirect to the correct canonical URL
+                if (slug !== s.slug) {
+                    navigate(`/${s.slug}/ticket/${t.id}`, { replace: true });
+                }
+            }
 
             // Load all barbers for this shop and find the specific barber
             const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', t.shop_id).order('created_at', { ascending: true });

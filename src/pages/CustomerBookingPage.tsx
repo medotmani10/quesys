@@ -98,7 +98,7 @@ export default function CustomerBookingPage() {
 
       if (ticketsData && ticketsData.length > 0) {
         // Ticket found for this session -> Redirect to the dedicated URL
-        navigate(`/t/${ticketsData[0].id}`, { replace: true });
+        navigate(`/${slug}/ticket/${ticketsData[0].id}`, { replace: true });
         return;
       }
     } catch { toast.error('حدث خطأ في تحميل البيانات'); }
@@ -139,7 +139,7 @@ export default function CustomerBookingPage() {
       // create_ticket returns SETOF tickets — first row is the new ticket
       const newTicket = (Array.isArray(ticket) ? ticket[0] : ticket) as Ticket;
       toast.success('تم إنشاء التذكرة بنجاح!');
-      navigate(`/t/${newTicket.id}`);
+      navigate(`/${slug}/ticket/${newTicket.id}`);
     } catch { toast.error('حدث خطأ غير متوقع'); }
     finally { setSubmitting(false); }
   };

@@ -74,9 +74,11 @@ function App() {
       <BrowserRouter>
         <div dir="rtl" className="min-h-[100dvh] bg-background text-foreground">
           <Routes>
+            {/* Ticket status tracking (Specific path first) */}
+            <Route path="/:slug/ticket/:ticketId" element={<TicketStatusPage />} />
             {/* Customer booking page - main route */}
             <Route path="/:slug" element={<CustomerBookingPage />} />
-            {/* Ticket status tracking */}
+            {/* Legacy redirect or backup */}
             <Route path="/t/:ticketId" element={<TicketStatusPage />} />
             {/* Default redirect to a sample shop or show landing */}
             <Route path="/" element={<Navigate to="/default-slug" replace />} />

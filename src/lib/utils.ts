@@ -5,30 +5,42 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export function getMainBaseUrl() {
+  if (typeof window === 'undefined') return '';
+  const host = window.location.host;
+  // Strip subdomains to get the root
+  const rootHost = host.replace('admin-', '').replace('admin.', '').replace('barber-', '').replace('barber.', '').replace('customer.', '');
+
+  if (host.includes('localhost') || host.includes('127.0.0')) {
+    return `${window.location.protocol}//${rootHost}`;
+  }
+  // Hardcoded production landing for reliability
+  return 'https://barberticket.vercel.app';
+}
+
 export function getCustomerBaseUrl() {
   if (typeof window === 'undefined') return '';
   const host = window.location.host;
-  
-  // If already on customer subdomain, use current host
-  if (host.includes('customer') || host.includes('costumer')) {
-    return `${window.location.protocol}//${host}`;
-  }
-  
-  // For localhost development
+
   if (host.includes('localhost') || host.includes('127.0.0')) {
-    const localHost = host.replace('admin-', '').replace('admin.', '').replace('barber-', '').replace('barber.', '');
-    return `${window.location.protocol}//${localHost}`;
+    const rootHost = host.replace('admin-', '').replace('admin.', '').replace('barber-', '').replace('barber.', '');
+    return `${window.location.protocol}//${rootHost}`;
   }
-  
-  // Production customer subdomain
+
   return 'https://customer-barberticket.vercel.app';
 }
 
 export function getBarberBaseUrl() {
   if (typeof window === 'undefined') return '';
-  const host = window.location.host.replace('admin-', '').replace('admin.', '').replace('barber-', '').replace('barber.', '');
-  if (host.includes('localhost') || host.includes('127.0.0')) return `${window.location.protocol}//${host}`;
-  return `${window.location.protocol}//barber-${host}`;
+  const host = window.location.host;
+
+  if (host.includes('localhost') || host.includes('127.0.0')) {
+    const rootHost = host.replace('admin-', '').replace('admin.', '').replace('barber-', '').replace('barber.', '');
+    return `${window.location.protocol}//${rootHost}`;
+  }
+
+  const base = host.replace('admin-', '').replace('admin.', '').replace('barber-', '').replace('barber.', '').replace('customer.', '');
+  return `${window.location.protocol}//barber-${base}`;
 }
 
 /** Returns the per-barber display code, e.g. "A1" for the 1st barber, "B1" for the 2nd. */
