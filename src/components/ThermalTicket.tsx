@@ -10,15 +10,7 @@ function sanitizeHtml(html: string): string {
         .replace(/javascript:/gi, 'blocked:');
 }
 
-// Helper component for info rows - exported to allow fast refresh
-export function InfoRow({ label, value }: { label: string; value: string }) {
-    return (
-        <tr>
-            <td style={{ color: '#666', fontSize: '7pt', paddingBottom: '1mm', paddingLeft: '2mm' }}>{label}</td>
-            <td style={{ fontWeight: '700', paddingBottom: '1mm', textAlign: 'right' }}>{value}</td>
-        </tr>
-    );
-}
+
 
 interface ThermalTicketProps {
     ticketNumber: number;
@@ -68,90 +60,110 @@ export function ThermalTicket({
                 fontFamily: '"Cairo", "Noto Kufi Arabic", monospace',
                 backgroundColor: '#fff',
                 color: '#000',
-                padding: '15px 12px',
+                padding: '16px 12px',
                 boxSizing: 'border-box',
                 direction: 'rtl',
                 textAlign: 'center',
+                position: 'relative'
             }}
         >
-            {/* Header */}
-            <div style={{ borderBottom: '1px dashed #000', paddingBottom: '3mm', marginBottom: '3mm' }}>
-                <div style={{ fontSize: '11pt', fontWeight: '900', letterSpacing: '-0.5px' }}>✂ {shopName}</div>
-                <div style={{ fontSize: '7pt', color: '#555', marginTop: '1mm' }}>نظام الطوابير الرقمي</div>
+            {/* Minimal Header */}
+            <div style={{ paddingBottom: '3mm', marginBottom: '2mm' }}>
+                <div style={{ fontSize: '12pt', fontWeight: '900', letterSpacing: '-0.5px' }}>{shopName}</div>
+                <div style={{ fontSize: '6.5pt', color: '#666', marginTop: '1mm', display: 'flex', justifyContent: 'center', gap: '3mm' }}>
+                    <span>{dateStr}</span>
+                    <span>{timeStr}</span>
+                </div>
             </div>
 
-            {/* Ticket Number - HUGE */}
-            <div style={{ margin: '3mm 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{ fontSize: '10pt', fontWeight: '700', color: '#666', marginBottom: '2mm' }}>
-                    رقم التذكرة
+            {/* Separator - subtle */}
+            <div style={{ borderTop: '1px solid #eee', width: '80%', margin: '0 auto 3mm auto' }} />
+
+            {/* The Hero Section */}
+            <div style={{ margin: '5mm 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ fontSize: '11pt', fontWeight: '700', color: '#111', marginBottom: '3mm' }}>
+                    رقم دورك
                 </div>
+
+                {/* Massive Number Pill */}
                 <div style={{
-                    fontSize: '36pt',
+                    fontSize: '44pt',
                     fontWeight: '900',
                     lineHeight: '1',
-                    border: '2px solid #000',
-                    borderRadius: '3mm',
-                    padding: '2mm 10mm',
+                    border: '3px solid #000',
+                    borderRadius: '20px',
+                    padding: '3mm 8mm',
                     margin: '0 auto',
                     textAlign: 'center',
-                    display: 'inline-block'
+                    display: 'inline-block',
+                    backgroundColor: '#000',
+                    color: '#fff',
+                    letterSpacing: '-1px'
                 }}>
                     {code}
                 </div>
-            </div>
 
-            {/* Status badge */}
-            <div style={{
-                display: 'inline-block',
-                border: '1px solid #000',
-                borderRadius: '10mm',
-                padding: '1mm 5mm',
-                fontSize: '9pt',
-                fontWeight: '700',
-                marginBottom: '3mm',
-                margin: '0 auto',
-            }}>
-                ⏳ في قائمة الانتظار
-            </div>
-
-            {/* Separator */}
-            <div style={{ borderTop: '1px dashed #000', margin: '2mm 0' }} />
-
-            {/* Info rows */}
-            <table style={{ width: '100%', fontSize: '8pt', borderCollapse: 'collapse', textAlign: 'right' }}>
-                <tbody>
-                    <InfoRow label="العميل" value={customerName} />
-                    {barberName && <InfoRow label="الحلاق" value={barberName} />}
-                    {peopleCount > 1 && <InfoRow label="الأشخاص" value={`${peopleCount} أشخاص`} />}
-                    <InfoRow label="الوقت" value={`${timeStr}`} />
-                    <InfoRow label="التاريخ" value={dateStr} />
-                </tbody>
-            </table>
-
-            {/* Separator */}
-            <div style={{ borderTop: '1px dashed #000', margin: '3mm 0' }} />
-
-            {/* QR Code */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2mm' }}>
-                <div style={{ fontSize: '8pt', fontWeight: '700', color: '#555' }}>
-                    امسح الكود لتتابع دورك مباشرة 📱
+                {/* Status Badge right beneath */}
+                <div style={{
+                    marginTop: '3mm',
+                    fontSize: '8.5pt',
+                    fontWeight: '700',
+                    color: '#444',
+                    letterSpacing: '-0.3px',
+                }}>
+                    في قائمة الانتظار ⏳
                 </div>
-                <QRCodeSVG
-                    value={trackingUrl}
-                    size={110}
-                    level="M"
-                    bgColor="#ffffff"
-                    fgColor="#000000"
-                    style={{ display: 'block' }}
-                />
-                <div style={{ fontSize: '6pt', color: '#999', wordBreak: 'break-all', textAlign: 'center', direction: 'ltr' }}>
+            </div>
+
+            {/* Sub-hero details */}
+            <div style={{
+                margin: '4mm 0',
+                padding: '2mm 0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1.5mm',
+                background: '#f9f9f9',
+                borderRadius: '8px'
+            }}>
+                <div style={{ fontSize: '8.5pt', fontWeight: '700', color: '#000' }}>
+                    العميل: {customerName}
+                </div>
+                <div style={{ fontSize: '8.5pt', fontWeight: '700', color: '#000' }}>
+                    مع الحلاق: {barberName || 'الكل'}
+                </div>
+                {peopleCount > 1 && (
+                    <div style={{ fontSize: '8pt', fontWeight: '700', color: '#555' }}>
+                        عدد الأشخاص: {peopleCount}
+                    </div>
+                )}
+            </div>
+
+            {/* Separator */}
+            <div style={{ borderTop: '1px dashed #ccc', margin: '4mm 0' }} />
+
+            {/* QR Code Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2mm', marginBottom: '1mm' }}>
+                <div style={{ fontSize: '7.5pt', fontWeight: '700', color: '#333' }}>
+                    امسح الكود لمتابعة دورك من هاتفك
+                </div>
+                <div style={{ padding: '2mm', background: '#fff', borderRadius: '4px' }}>
+                    <QRCodeSVG
+                        value={trackingUrl}
+                        size={85}
+                        level="M"
+                        bgColor="#ffffff"
+                        fgColor="#000000"
+                        style={{ display: 'block' }}
+                    />
+                </div>
+                <div style={{ fontSize: '6pt', color: '#888', wordBreak: 'break-all', textAlign: 'center', direction: 'ltr', maxWidth: '80%' }}>
                     {trackingUrl}
                 </div>
             </div>
 
             {/* Footer */}
-            <div style={{ borderTop: '1px dashed #000', marginTop: '3mm', paddingTop: '3mm', fontSize: '6.5pt', color: '#666' }}>
-                شكراً لزيارتك — Barber Ticket
+            <div style={{ marginTop: '2mm', fontSize: '6pt', color: '#aaa', fontWeight: '700' }}>
+                BARBER TICKET
             </div>
         </div>
     );
