@@ -51,6 +51,7 @@ export interface Shop {
   logo_url: string | null
   maps_url: string | null
   phone: string | null
+  tv_pin: string | null
   is_open: boolean
   created_at: string
 }
