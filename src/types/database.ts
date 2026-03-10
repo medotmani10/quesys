@@ -75,6 +75,7 @@ export interface Ticket {
   people_count: number
   ticket_number: number
   user_session_id: string
+  pin_code: string | null
   status: 'waiting' | 'serving' | 'completed' | 'canceled'
   created_at: string
   updated_at: string

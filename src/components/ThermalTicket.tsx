@@ -21,6 +21,7 @@ interface ThermalTicketProps {
     shopName: string;
     shopSlug: string;
     peopleCount: number;
+    pinCode?: string | null;
     createdAt: Date;
 }
 
@@ -33,10 +34,13 @@ export function ThermalTicket({
     shopName,
     shopSlug,
     peopleCount,
+    pinCode,
     createdAt,
 }: ThermalTicketProps) {
     const customerBase = getCustomerBaseUrl();
-    const trackingUrl = `${customerBase}/${shopSlug}/ticket/${ticketId}`;
+    const trackingUrl = pinCode
+        ? `${customerBase}/${shopSlug}/ticket/${ticketId}?pin=${pinCode}`
+        : `${customerBase}/${shopSlug}/ticket/${ticketId}`;
     const code = barberIndex !== undefined && barberIndex >= 0
         ? `${String.fromCharCode(65 + (barberIndex % 26))}${ticketNumber}`
         : `${ticketNumber}`;

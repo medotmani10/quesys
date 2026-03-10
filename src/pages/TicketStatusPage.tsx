@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, getOrCreateSessionId } from '@/lib/supabase';
 import type { Ticket, Barber, Shop } from '@/types/database';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { playTicketSound } from '@/lib/notificationSound';
 
 export default function TicketStatusPage() {
     const { slug, ticketId } = useParams<{ slug?: string, ticketId: string }>();
+    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
 
     const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -33,8 +34,11 @@ export default function TicketStatusPage() {
         if (!ticketId) return;
         try {
             const sessionId = await getOrCreateSessionId();
+            const urlPin = searchParams.get('pin');
+            const localPinKey = `ticket_pin_${ticketId}`;
+            const storedPin = localStorage.getItem(localPinKey);
 
-            // 1. Fetch the ticket directly without strict RPC to check its state
+            // 1. Fetch the ticket with its pin_code
             const { data: rawTicket, error: fetchError } = await supabase
                 .from('tickets')
                 .select('*')
@@ -48,23 +52,37 @@ export default function TicketStatusPage() {
             }
 
             let currentTicket = rawTicket as Ticket;
+            let isAuthorized = false;
 
-            // 2. TICKET ADOPTION PROTOCOL (Online to Offline)
-            // إذا كانت التذكرة منشأة من طرف الآدمن (تبدأ بـ manual_)، هاتف الزبون سيتبناها فوراً
-            if (currentTicket.user_session_id && currentTicket.user_session_id.startsWith('manual_')) {
-                const { error: updateError } = await supabase
-                    .from('tickets')
-                    .update({ user_session_id: sessionId })
-                    .eq('id', ticketId);
+            // 2. Authorization Logic
+            if (urlPin && currentTicket.pin_code === urlPin) {
+                // PIN from QR Code is valid: store it and immediately strip from URL
+                localStorage.setItem(localPinKey, urlPin);
+                isAuthorized = true;
 
-                if (!updateError) {
-                    currentTicket.user_session_id = sessionId;
+                // Clean the URL strictly without triggering a React Router reload
+                const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({ path: newUrl }, '', newUrl);
+
+            } else if (storedPin && currentTicket.pin_code === storedPin) {
+                // Return visitor with valid PIN in localStorage
+                isAuthorized = true;
+            } else if (currentTicket.user_session_id === sessionId) {
+                // Original creator of the ticket
+                isAuthorized = true;
+            } else if (currentTicket.user_session_id && currentTicket.user_session_id.startsWith('manual_')) {
+                // Ticket adoption by the first phone that scans it (fallback for legacy/kiosk)
+                if (urlPin && currentTicket.pin_code === urlPin) {
+                    const { error: updateError } = await supabase
+                        .from('tickets')
+                        .update({ user_session_id: sessionId })
+                        .eq('id', ticketId);
+                    if (!updateError) currentTicket.user_session_id = sessionId;
+                    isAuthorized = true;
                 }
             }
 
-            // 3. Strict Security Check: Verify ownership
-            // تأكيد أن التذكرة حالياً ملك لهذا الهاتف الفعلي لمنع التجسس
-            if (currentTicket.user_session_id !== sessionId) {
+            if (!isAuthorized) {
                 setNotFound(true);
                 setLoading(false);
                 return;

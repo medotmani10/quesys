@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import { getDeviceFingerprint } from './fingerprint';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -26,7 +25,7 @@ function setCookie(name: string, value: string, days: number) {
   document.cookie = name + "=" + value + ";" + expires + ";path=/;SameSite=Lax";
 }
 
-// Ensure the ID is stable using device fingerprinting + dual storage
+// Ensure the ID is stable using standard UUID + dual storage
 export async function getOrCreateSessionId(): Promise<string> {
   const cookieId = getCookie('queue_session_id');
   const localId = localStorage.getItem('queue_session_id');
@@ -39,8 +38,8 @@ export async function getOrCreateSessionId(): Promise<string> {
     return idToUse;
   }
 
-  // Generate robust fingerprint instead of Math.random
-  const fingerprint = await getDeviceFingerprint();
+  // Generate robust UUID instead of hardware fingerprint
+  const fingerprint = crypto.randomUUID();
 
   localStorage.setItem('queue_session_id', fingerprint);
   setCookie('queue_session_id', fingerprint, 365);
