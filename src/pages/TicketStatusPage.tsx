@@ -19,7 +19,6 @@ export default function TicketStatusPage() {
     const [peopleAhead, setPeopleAhead] = useState(0);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
-    const [isOwner, setIsOwner] = useState(false);
 
     const calculatePeopleAhead = useCallback(async (t: Ticket) => {
         const { data, error } = await supabase.rpc('get_people_ahead', {
@@ -35,37 +34,19 @@ export default function TicketStatusPage() {
         try {
             const sessionId = await getOrCreateSessionId();
 
-            // First, try to fetch as owner (to get full rights including cancel)
+            // Securely fetch ticket matching both ID and device fingerprint session
             const { data: ticketData, error } = await supabase.rpc('get_my_ticket', {
                 p_ticket_id: ticketId,
                 p_session_id: sessionId
             });
 
-            let t: Ticket | null = null;
-
-            if (!error && ticketData && ticketData.length > 0) {
-                t = ticketData[0] as Ticket;
-                setIsOwner(true);
-            } else {
-                // If not found via RPC (meaning different session/device), try fetching public safe columns
-                const { data: publicTicket, error: publicError } = await supabase
-                    .from('tickets')
-                    .select('id, shop_id, barber_id, ticket_number, customer_name, status, people_count, created_at, updated_at')
-                    .eq('id', ticketId)
-                    .single();
-
-                if (!publicError && publicTicket) {
-                    t = publicTicket as unknown as Ticket;
-                    setIsOwner(false);
-                }
-            }
-
-            if (!t) {
+            if (error || !ticketData || ticketData.length === 0) {
                 setNotFound(true);
                 setLoading(false);
                 return;
             }
 
+            const t = ticketData[0] as Ticket;
             setTicket(t);
 
             // Load shop
@@ -305,7 +286,7 @@ export default function TicketStatusPage() {
                         </div>
 
                         {/* Cancel */}
-                        {ticket.status === 'waiting' && isOwner && (
+                        {ticket.status === 'waiting' && (
                             <Button onClick={handleCancel} variant="outline"
                                 className="w-full rounded-xl h-12 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 font-bold">
                                 <X className="w-4 h-4 mr-2" /> إلغاء الحجز
