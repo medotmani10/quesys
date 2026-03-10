@@ -419,7 +419,7 @@ export default function AdminDashboard() {
     try {
       const barberIndex = getBarberIndex(manualBarber);
       const barberName = barbers.find(b => b.id === manualBarber)?.name;
-      const sessionId = null;
+      const sessionId = 'ADMIN_CREATED';
 
       const { data: ticketData, error } = await supabase.rpc('create_ticket', {
         p_shop_id: shop.id,

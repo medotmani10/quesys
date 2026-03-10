@@ -35,6 +35,14 @@ export default function TicketStatusPage() {
         try {
             const sessionId = await getOrCreateSessionId();
 
+            // ─── TICKET ADOPTION ───
+            // Attempt to silently claim the ticket if it was 'ADMIN_CREATED' and has no owner yet.
+            // If the user already has a ticket in this shop, claim_admin_ticket will return false and they won't adopt it.
+            await supabase.rpc('claim_admin_ticket', {
+                p_ticket_id: ticketId,
+                p_session_id: sessionId
+            });
+
             // First, try to fetch as owner (to get full rights including cancel)
             const { data: ticketData, error } = await supabase.rpc('get_my_ticket', {
                 p_ticket_id: ticketId,
@@ -46,6 +54,9 @@ export default function TicketStatusPage() {
             if (!error && ticketData && ticketData.length > 0) {
                 t = ticketData[0] as Ticket;
                 setIsOwner(true);
+                // Also, save this ticket ID to the customer's localStorage as their active ticket
+                // so they can be redirected to it automatically upon revisiting the site.
+                localStorage.setItem(`active_ticket_${t.shop_id}`, t.id);
             } else {
                 // If not found via RPC (meaning different session/device), try fetching public safe columns
                 const { data: publicTicket, error: publicError } = await supabase
