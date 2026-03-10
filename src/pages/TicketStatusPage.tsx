@@ -34,54 +34,77 @@ export default function TicketStatusPage() {
         try {
             const sessionId = await getOrCreateSessionId();
 
-            // Securely fetch ticket matching both ID and device fingerprint session
-            const { data: ticketData, error } = await supabase.rpc('get_my_ticket', {
-                p_ticket_id: ticketId,
-                p_session_id: sessionId
-            });
+            // 1. Fetch the ticket directly without strict RPC to check its state
+            const { data: rawTicket, error: fetchError } = await supabase
+                .from('tickets')
+                .select('*')
+                .eq('id', ticketId)
+                .single();
 
-            if (error || !ticketData || ticketData.length === 0) {
+            if (fetchError || !rawTicket) {
                 setNotFound(true);
                 setLoading(false);
                 return;
             }
 
-            const t = ticketData[0] as Ticket;
-            setTicket(t);
+            let currentTicket = rawTicket as Ticket;
+
+            // 2. TICKET ADOPTION PROTOCOL (Online to Offline)
+            // إذا كانت التذكرة منشأة من طرف الآدمن (تبدأ بـ manual_)، هاتف الزبون سيتبناها فوراً
+            if (currentTicket.user_session_id && currentTicket.user_session_id.startsWith('manual_')) {
+                const { error: updateError } = await supabase
+                    .from('tickets')
+                    .update({ user_session_id: sessionId })
+                    .eq('id', ticketId);
+
+                if (!updateError) {
+                    currentTicket.user_session_id = sessionId;
+                }
+            }
+
+            // 3. Strict Security Check: Verify ownership
+            // تأكيد أن التذكرة حالياً ملك لهذا الهاتف الفعلي لمنع التجسس
+            if (currentTicket.user_session_id !== sessionId) {
+                setNotFound(true);
+                setLoading(false);
+                return;
+            }
+
+            setTicket(currentTicket);
 
             // Load shop
-            const { data: shopData } = await supabase.from('shops').select('*').eq('id', t.shop_id).single();
+            const { data: shopData } = await supabase.from('shops').select('*').eq('id', currentTicket.shop_id).single();
             if (shopData) {
                 const s = shopData as Shop;
                 setShop(s);
 
                 // If the URL slug is missing or doesn't match the shop, redirect to the correct canonical URL
                 if (slug !== s.slug) {
-                    navigate(`/${s.slug}/ticket/${t.id}`, { replace: true });
+                    navigate(`/${s.slug}/ticket/${currentTicket.id}`, { replace: true });
                 }
             }
 
             // Load all barbers for this shop and find the specific barber
-            const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', t.shop_id).order('created_at', { ascending: true });
+            const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', currentTicket.shop_id).order('created_at', { ascending: true });
             const bList = (barbersData as Barber[]) || [];
 
             // Find this ticket's barber
-            if (t.barber_id) {
-                const bIndex = bList.findIndex(b => b.id === t.barber_id);
+            if (currentTicket.barber_id) {
+                const bIndex = bList.findIndex(b => b.id === currentTicket.barber_id);
                 setBarberIndex(bIndex);
                 setBarber(bIndex >= 0 ? bList[bIndex] : null);
             }
 
             // Calculate people ahead
-            if (t.status === 'waiting') {
-                calculatePeopleAhead(t);
+            if (currentTicket.status === 'waiting') {
+                calculatePeopleAhead(currentTicket);
             }
         } catch {
             setNotFound(true);
         } finally {
             setLoading(false);
         }
-    }, [ticketId, calculatePeopleAhead]);
+    }, [ticketId, calculatePeopleAhead, slug, navigate]);
 
     const subscribeToUpdates = useCallback(() => {
         if (!ticket) return;
