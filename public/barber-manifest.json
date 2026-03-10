@@ -1,0 +1,18 @@
+{
+    "name": "Barber App",
+    "short_name": "Barber App",
+    "description": "نظام إدارة طابور الحلاقة (خاص بالحلاقين)",
+    "theme_color": "#09090b",
+    "background_color": "#09090b",
+    "display": "standalone",
+    "orientation": "portrait",
+    "start_url": "/barber-entry",
+    "icons": [
+        {
+            "src": "/barber-app-icon.svg",
+            "sizes": "192x192 512x512",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}
