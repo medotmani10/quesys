@@ -91,7 +91,7 @@ export default function ArchivePage() {
 
       setBarbers((barbersData as Barber[]) || []);
       setLoading(false);
-    } catch (error) {
+    } catch {
       toast.error('حدث خطأ في تحميل البيانات');
       setLoading(false);
     }
@@ -230,7 +230,7 @@ export default function ArchivePage() {
                 <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
                   <Filter className="w-5 h-5 text-yellow-400" />
                 </div>
-                <Select value={timeFilter} onValueChange={(val: any) => setTimeFilter(val)}>
+                <Select value={timeFilter} onValueChange={(val) => setTimeFilter(val as TimeFilter)}>
                   <SelectTrigger className="w-full rounded-2xl h-14 bg-black/50 border-zinc-800 text-white focus:ring-yellow-400 hover:border-zinc-700 font-bold">
                     <SelectValue placeholder="اختر الفترة" />
                   </SelectTrigger>

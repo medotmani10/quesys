@@ -18,16 +18,6 @@ export default function BarberLoginPage() {
 
     const activeSlug = slug || shopSlug.trim();
 
-    useEffect(() => {
-        const savedSlug = localStorage.getItem('barber_shop_slug');
-        if (!slug && savedSlug && !window.location.pathname.includes('login')) {
-            // Auto-redirect to dashboard if we have a saved slug and are on root
-            navigate(`/${savedSlug}/barber`);
-            return;
-        }
-        checkUser(activeSlug || savedSlug);
-    }, [slug]);
-
     const checkUser = async (currentSlug: string | null = activeSlug) => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
@@ -56,6 +46,16 @@ export default function BarberLoginPage() {
             }
         }
     };
+
+    useEffect(() => {
+        const savedSlug = localStorage.getItem('barber_shop_slug');
+        if (!slug && savedSlug && !window.location.pathname.includes('login')) {
+            // Auto-redirect to dashboard if we have a saved slug and are on root
+            navigate(`/${savedSlug}/barber`);
+            return;
+        }
+        checkUser(activeSlug || savedSlug);
+    }, [slug, activeSlug, navigate]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();

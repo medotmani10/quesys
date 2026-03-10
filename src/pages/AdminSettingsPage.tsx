@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { Shop, Barber } from '@/types/database';
+import type { User } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,11 +35,7 @@ export default function AdminSettingsPage() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editSaving, setEditSaving] = useState(false);
 
-    const [currentUser, setCurrentUser] = useState<any>(null);
-
-    useEffect(() => {
-        loadData();
-    }, []);
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
 
     const loadData = async () => {
         try {
@@ -49,11 +46,15 @@ export default function AdminSettingsPage() {
             }
             setCurrentUser(session.user);
             await loadShopData(session.user.id);
-        } catch (error) {
+        } catch {
             toast.error('حدث خطأ أثناء تحميل الحساب');
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        loadData();
+    }, []);
 
     const loadShopData = async (userId: string, retries = 3) => {
         try {
@@ -87,7 +88,7 @@ export default function AdminSettingsPage() {
             if (barbersData) {
                 setBarbers(barbersData);
             }
-        } catch (error) {
+        } catch {
             toast.error('حدث خطأ أثناء تحميل البيانات');
         } finally {
             setLoading(false);
@@ -174,7 +175,7 @@ export default function AdminSettingsPage() {
                 // Refresh data
                 loadData();
             }
-        } catch (error) {
+        } catch {
             toast.error('حدث خطأ غير متوقع');
         } finally {
             setSaving(false);
@@ -228,9 +229,9 @@ export default function AdminSettingsPage() {
             setNewBarberName('');
             setNewBarberPassword('');
             toast.success('تم إضافة الحلاق وإنشاء حسابه بنجاح');
-        } catch (error: any) {
-            console.error('Add barber error:', error);
-            toast.error(error.message || 'فشل إضافة الحلاق');
+        } catch {
+            console.error('Add barber error');
+            toast.error('فشل إضافة الحلاق');
         } finally {
             setSaving(false);
         }
@@ -297,9 +298,9 @@ export default function AdminSettingsPage() {
             setIsEditModalOpen(false);
             setEditingBarber(null);
 
-        } catch (error: any) {
-            console.error('Edit barber error:', error);
-            toast.error(error.message || 'فشل تحديث الحلاق');
+        } catch {
+            console.error('Edit barber error');
+            toast.error('فشل تحديث الحلاق');
         } finally {
             setEditSaving(false);
         }
@@ -321,8 +322,8 @@ export default function AdminSettingsPage() {
             toast.success('تم حذف الحلاق بنجاح');
             setIsEditModalOpen(false);
             setEditingBarber(null);
-        } catch (error: any) {
-            console.error('Delete barber error:', error);
+        } catch {
+            console.error('Delete barber error');
             toast.error('فشل حذف الحلاق - تأكد من عدم وجود حجوزات نشطة مرتبطة به');
         } finally {
             setEditSaving(false);
@@ -340,7 +341,7 @@ export default function AdminSettingsPage() {
 
             setBarbers(barbers.map(b => b.id === barberId ? { ...b, is_active: !currentStatus } : b));
             toast.success(currentStatus ? 'تم إيقاف الحلاق' : 'تم تفعيل الحلاق');
-        } catch (error) {
+        } catch {
             toast.error('فشل تحديث حالة الحلاق');
         }
     };

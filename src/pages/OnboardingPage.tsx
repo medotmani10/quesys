@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import type { Shop } from '@/types/database';
+import type { User } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,11 +21,7 @@ export default function OnboardingPage() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [barbers, setBarbers] = useState([{ name: '', password: '' }]);
-  const [currentUser, setCurrentUser] = useState<any>(null);
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -45,6 +42,10 @@ export default function OnboardingPage() {
       navigate('/admin');
     }
   };
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -140,6 +141,8 @@ export default function OnboardingPage() {
 
       // Create shop
       const slug = generateSlug(shopName);
+      if (!currentUser) throw new Error('User not found');
+
       const { data: shop, error: shopError } = await supabase
         .from('shops')
         .insert({
@@ -210,7 +213,7 @@ export default function OnboardingPage() {
 
       toast.success('تم إنشاء الصالون بنجاح!');
       navigate('/admin');
-    } catch (error) {
+    } catch {
       toast.error('حدث خطأ غير متوقع');
     } finally {
       setLoading(false);

@@ -14,9 +14,11 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        checkUser();
-    }, []);
+    const checkShopExists = async (userId: string) => {
+        const { data: shop } = await supabase.from('shops').select('slug').eq('owner_id', userId).single();
+        if (shop) navigate('/admin');
+        else navigate('/onboarding');
+    };
 
     const checkUser = async () => {
         const { data: { session } } = await supabase.auth.getSession();
@@ -25,11 +27,9 @@ export default function LoginPage() {
         }
     };
 
-    const checkShopExists = async (userId: string) => {
-        const { data: shop } = await supabase.from('shops').select('slug').eq('owner_id', userId).single();
-        if (shop) navigate('/admin');
-        else navigate('/onboarding');
-    };
+    useEffect(() => {
+        checkUser();
+    }, []);
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();

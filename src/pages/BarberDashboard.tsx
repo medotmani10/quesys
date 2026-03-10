@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import type { Shop, Barber, Ticket } from '@/types/database';
@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Scissors, LogOut, CheckCircle, BellRing, User, Clock, Loader2, Phone } from 'lucide-react';
 import { toast } from 'sonner';
-import { getTicketCode } from './CustomerBookingPage';
+import { getTicketCode } from '@/lib/utils';
 import BarberInstallPrompt from '@/components/BarberInstallPrompt';
 
 export default function BarberDashboard() {
@@ -24,26 +24,32 @@ export default function BarberDashboard() {
     const [actionLoading, setActionLoading] = useState(false);
     const [selectedTicketDetails, setSelectedTicketDetails] = useState<Ticket | null>(null);
 
-    useEffect(() => {
-        loadData();
-    }, [slug]);
+    const fetchTickets = useCallback(async (shopId: string, barberId: string) => {
+        // Fetch serving ticket for THIS barber
+        const { data: servingData } = await supabase
+            .from('tickets')
+            .select('*')
+            .eq('shop_id', shopId)
+            .eq('barber_id', barberId)
+            .eq('status', 'serving')
+            .order('updated_at', { ascending: false })
+            .limit(1);
 
-    useEffect(() => {
-        if (!shop || !barber) return;
+        setServingTicket(servingData && servingData.length > 0 ? servingData[0] as Ticket : null);
 
-        const channel = supabase.channel(`barber_dashboard_${barber.id}`)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` }, () => {
-                fetchTickets(shop.id, barber.id);
-            })
-            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'barbers', filter: `id=eq.${barber.id}` }, (payload) => {
-                setBarber(payload.new as Barber);
-            })
-            .subscribe();
+        // Fetch waiting tickets exclusively for THIS barber
+        const { data: waitingData } = await supabase
+            .from('tickets')
+            .select('*')
+            .eq('shop_id', shopId)
+            .eq('barber_id', barberId)
+            .eq('status', 'waiting')
+            .order('ticket_number', { ascending: true });
 
-        return () => { supabase.removeChannel(channel); };
-    }, [shop?.id, barber?.id]);
+        setWaitingTickets((waitingData as Ticket[]) || []);
+    }, []);
 
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session?.user) {
@@ -107,32 +113,27 @@ export default function BarberDashboard() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [slug, navigate, fetchTickets]);
 
-    const fetchTickets = async (shopId: string, barberId: string) => {
-        // Fetch serving ticket for THIS barber
-        const { data: servingData } = await supabase
-            .from('tickets')
-            .select('*')
-            .eq('shop_id', shopId)
-            .eq('barber_id', barberId)
-            .eq('status', 'serving')
-            .order('updated_at', { ascending: false })
-            .limit(1);
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
-        setServingTicket(servingData && servingData.length > 0 ? servingData[0] as Ticket : null);
+    useEffect(() => {
+        if (!shop || !barber) return;
 
-        // Fetch waiting tickets exclusively for THIS barber
-        const { data: waitingData } = await supabase
-            .from('tickets')
-            .select('*')
-            .eq('shop_id', shopId)
-            .eq('barber_id', barberId)
-            .eq('status', 'waiting')
-            .order('ticket_number', { ascending: true });
+        const channel = supabase.channel(`barber_dashboard_${barber.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` }, () => {
+                fetchTickets(shop.id, barber.id);
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'barbers', filter: `id=eq.${barber.id}` }, (payload) => {
+                setBarber(payload.new as Barber);
+            })
+            .subscribe();
 
-        setWaitingTickets((waitingData as Ticket[]) || []);
-    };
+        return () => { supabase.removeChannel(channel); };
+    }, [shop?.id, barber?.id, fetchTickets]);
+
 
     const handleToggleStatus = async () => {
         if (!barber) return;

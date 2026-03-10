@@ -15,22 +15,26 @@ interface BeforeInstallPromptEvent extends Event {
 export default function BarberInstallPrompt() {
     const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [isOpen, setIsOpen] = useState(false);
-    const [isInstalled, setIsInstalled] = useState(false);
+    const [isInstalled, setIsInstalled] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return window.matchMedia('(display-mode: standalone)').matches || ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true);
+    });
 
     useEffect(() => {
-        // Check if already installed
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
-        if (isStandalone) {
-            setIsInstalled(true);
-            return;
-        }
+        const checkInstalled = () => {
+            const installed = window.matchMedia('(display-mode: standalone)').matches || ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true);
+            if (installed) {
+                setIsInstalled(true);
+            }
+        };
+        checkInstalled();
 
         const handleBeforeInstallPrompt = (e: Event) => {
             // Prevent the mini-infobar from appearing on mobile
             e.preventDefault();
             // Stash the event so it can be triggered later.
             setDeferredPrompt(e as BeforeInstallPromptEvent);
-            // Optionally, we show the dialog automatically when the event fires, 
+            // Optionally, we show the dialog automatically when the event fires,
             // or we could show it after a delay/on button click.
             setIsOpen(true);
         };

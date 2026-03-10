@@ -10,6 +10,16 @@ function sanitizeHtml(html: string): string {
         .replace(/javascript:/gi, 'blocked:');
 }
 
+// Helper component for info rows - exported to allow fast refresh
+export function InfoRow({ label, value }: { label: string; value: string }) {
+    return (
+        <tr>
+            <td style={{ color: '#666', fontSize: '7pt', paddingBottom: '1mm', paddingLeft: '2mm' }}>{label}</td>
+            <td style={{ fontWeight: '700', paddingBottom: '1mm', textAlign: 'right' }}>{value}</td>
+        </tr>
+    );
+}
+
 interface ThermalTicketProps {
     ticketNumber: number;
     ticketId: string;
@@ -223,7 +233,7 @@ export function printThermalTicket(props: ThermalTicketProps) {
         setTimeout(function() { window.close(); }, 500);
       }, 800);
     };
-  <\/script>
+  </script>
 </body>
 </html>`);
             printWindow.document.close();
@@ -232,14 +242,4 @@ export function printThermalTicket(props: ThermalTicketProps) {
         root.unmount();
         document.body.removeChild(container);
     });
-}
-
-/* ─── Helper row ─── */
-function InfoRow({ label, value }: { label: string; value: string }) {
-    return (
-        <tr>
-            <td style={{ color: '#666', fontSize: '7pt', paddingBottom: '1mm', paddingLeft: '2mm' }}>{label}</td>
-            <td style={{ fontWeight: '700', paddingBottom: '1mm', textAlign: 'right' }}>{value}</td>
-        </tr>
-    );
 }

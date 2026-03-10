@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, getOrCreateSessionId } from '@/lib/supabase';
 import type { Ticket, Barber, Shop } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Scissors, AlertCircle, Loader2, X, User, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { getTicketCode } from '@/pages/CustomerBookingPage';
+import { getTicketCode } from '@/lib/utils';
 import { playTicketSound } from '@/lib/notificationSound';
 
 export default function TicketStatusPage() {
@@ -20,32 +20,16 @@ export default function TicketStatusPage() {
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
 
-    useEffect(() => {
-        if (ticketId) loadTicket();
-    }, [ticketId]);
+    const calculatePeopleAhead = useCallback(async (t: Ticket) => {
+        const { data, error } = await supabase.rpc('get_people_ahead', {
+            p_shop_id: t.shop_id,
+            p_barber_id: t.barber_id,
+            p_created_at: t.created_at,
+        });
+        if (!error) setPeopleAhead(data ?? 0);
+    }, []);
 
-    useEffect(() => {
-        if (ticket && (ticket.status === 'waiting' || ticket.status === 'serving')) {
-            return subscribeToUpdates();
-        }
-    }, [ticket?.id, ticket?.status]);
-
-    // Also refresh peopleAhead whenever any ticket in the same shop+barber queue changes
-    useEffect(() => {
-        if (!ticket || ticket.status !== 'waiting') return;
-        const shopId = ticket.shop_id;
-        const chan = supabase
-            .channel(`queue_watch_${ticket.id}`)
-            .on('postgres_changes', {
-                event: '*', schema: 'public', table: 'tickets',
-                filter: `shop_id=eq.${shopId}`,
-            }, () => calculatePeopleAhead(ticket))
-            .subscribe();
-        return () => { supabase.removeChannel(chan); };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [ticket?.id, ticket?.status]);
-
-    const loadTicket = async () => {
+    const loadTicket = useCallback(async () => {
         if (!ticketId) return;
         try {
             const sessionId = await getOrCreateSessionId();
@@ -89,18 +73,9 @@ export default function TicketStatusPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [ticketId, calculatePeopleAhead]);
 
-    const calculatePeopleAhead = async (t: Ticket) => {
-        const { data, error } = await supabase.rpc('get_people_ahead', {
-            p_shop_id: t.shop_id,
-            p_barber_id: t.barber_id,
-            p_created_at: t.created_at,
-        });
-        if (!error) setPeopleAhead(data ?? 0);
-    };
-
-    const subscribeToUpdates = () => {
+    const subscribeToUpdates = useCallback(() => {
         if (!ticket) return;
         const sub = supabase
             .channel(`ticket_status_${ticket.id}`)
@@ -129,7 +104,32 @@ export default function TicketStatusPage() {
             .subscribe();
         // ✅ FIXED C-5: properly remove channel on cleanup
         return () => { supabase.removeChannel(sub); };
-    };
+    }, [ticket, calculatePeopleAhead]);
+
+    useEffect(() => {
+        if (ticketId) loadTicket();
+    }, [ticketId, loadTicket]);
+
+    useEffect(() => {
+        if (!ticket) return;
+        if (ticket.status === 'waiting' || ticket.status === 'serving') {
+            return subscribeToUpdates();
+        }
+    }, [ticket, subscribeToUpdates]);
+
+    // Also refresh peopleAhead whenever any ticket in the same shop+barber queue changes
+    useEffect(() => {
+        if (!ticket || ticket.status !== 'waiting') return;
+        const shopId = ticket.shop_id;
+        const chan = supabase
+            .channel(`queue_watch_${ticket.id}`)
+            .on('postgres_changes', {
+                event: '*', schema: 'public', table: 'tickets',
+                filter: `shop_id=eq.${shopId}`,
+            }, () => calculatePeopleAhead(ticket))
+            .subscribe();
+        return () => { supabase.removeChannel(chan); };
+    }, [ticket, calculatePeopleAhead]);
 
     const handleCancel = async () => {
         if (!ticket) return;

@@ -19,9 +19,10 @@ function App() {
   const hostname = window.location.hostname;
   const isAdmin = hostname.includes('admin');
   const isBarber = hostname.includes('barber-') || hostname.includes('barber.');
+  const isCustomer = hostname.includes('customer') || hostname.includes('costumer');
 
   // ---------------------------------------------------------------------------
-  // ADMIN ROUTES
+  // ADMIN ROUTES (admin-barberticket.vercel.app)
   // ---------------------------------------------------------------------------
   if (isAdmin) {
     return (
@@ -44,7 +45,7 @@ function App() {
   }
 
   // ---------------------------------------------------------------------------
-  // BARBER ROUTES
+  // BARBER ROUTES (barber-barberticket.vercel.app)
   // ---------------------------------------------------------------------------
   if (isBarber) {
     return (
@@ -66,25 +67,41 @@ function App() {
   }
 
   // ---------------------------------------------------------------------------
-  // CUSTOMER / MAIN ROUTES
+  // CUSTOMER ROUTES (customer-barberticket.vercel.app)
+  // ---------------------------------------------------------------------------
+  if (isCustomer) {
+    return (
+      <BrowserRouter>
+        <div dir="rtl" className="min-h-[100dvh] bg-background text-foreground">
+          <Routes>
+            {/* Customer booking page - main route */}
+            <Route path="/:slug" element={<CustomerBookingPage />} />
+            {/* Ticket status tracking */}
+            <Route path="/t/:ticketId" element={<TicketStatusPage />} />
+            {/* Default redirect to a sample shop or show landing */}
+            <Route path="/" element={<Navigate to="/default-slug" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          <CustomerInstallPrompt />
+          <Toaster position="top-center" richColors />
+        </div>
+      </BrowserRouter>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // MAIN LANDING PAGE (barberticket.vercel.app)
   // ---------------------------------------------------------------------------
   return (
     <BrowserRouter>
       <div dir="rtl" className="min-h-[100dvh] bg-background text-foreground">
         <Routes>
-          {/* Customer landing */}
+          {/* Landing page for main domain */}
           <Route path="/" element={<LandingPage />} />
-
-          {/* Shared views */}
-          <Route path="/t/:ticketId" element={<TicketStatusPage />} />
+          {/* TV Display for shops */}
           <Route path="/:slug/tv" element={<TVDisplayPage />} />
-
-          {/* Customer booking */}
-          <Route path="/:slug" element={<CustomerBookingPage />} />
-
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        <CustomerInstallPrompt />
         <Toaster position="top-center" richColors />
       </div>
     </BrowserRouter>

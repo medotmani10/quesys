@@ -8,7 +8,7 @@ export async function getDeviceFingerprint(): Promise<string> {
         window.screen.colorDepth,
         new Date().getTimezoneOffset(),
         navigator.hardwareConcurrency || 'unknown',
-        (navigator as any).deviceMemory || 'unknown',
+        (navigator as { deviceMemory?: number }).deviceMemory || 'unknown',
         // Some simple canvas fingerprinting for hardware stability
         getCanvasFingerprint()
     ];

@@ -1,13 +1,7 @@
 import type { Ticket, Barber } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, X } from 'lucide-react';
-
-function getTicketCode(barberIndex: number | undefined, ticketNumber: number): string {
-    const prefix = barberIndex !== undefined && barberIndex >= 0
-        ? String.fromCharCode(65 + (barberIndex % 26))
-        : '#';
-    return `${prefix}${ticketNumber}`;
-}
+import { getTicketCode } from '@/lib/utils';
 
 interface Props {
     ticket: Ticket;

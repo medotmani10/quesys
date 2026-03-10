@@ -2,25 +2,36 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Download, Share } from 'lucide-react';
 
+interface BeforeInstallPromptEvent extends Event {
+    readonly platforms: Array<string>;
+    readonly userChoice: Promise<{
+        outcome: 'accepted' | 'dismissed';
+        platform: string;
+    }>;
+    prompt(): Promise<void>;
+}
+
 export default function CustomerInstallPrompt() {
-    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+    const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [showPrompt, setShowPrompt] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
 
     useEffect(() => {
         // Detect iOS
-        const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-        setIsIOS(iOS);
+        const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !('MSStream' in window);
+        requestAnimationFrame(() => {
+            setIsIOS(iOS);
+        });
 
         // Stop if already installed
-        if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone) {
+        if (window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && navigator.standalone)) {
             return;
         }
 
         // Capture Android install prompt
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault();
-            setDeferredPrompt(e);
+            setDeferredPrompt(e as BeforeInstallPromptEvent);
             // Wait a bit before showing to not overwhelm the user
             setTimeout(() => setShowPrompt(true), 3000);
         };

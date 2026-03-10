@@ -9,14 +9,6 @@ import { MapPin, User, Phone, Users, Scissors, AlertCircle, Loader2, CheckCircle
 import { toast } from 'sonner';
 import ShopClosedScreen from '@/components/booking/ShopClosedScreen';
 
-/** Returns the per-barber display code, e.g. "A1" for the 1st barber, "B1" for the 2nd. */
-export function getTicketCode(barberIndex: number | undefined, ticketNumber: number): string {
-  const prefix = barberIndex !== undefined && barberIndex >= 0
-    ? String.fromCharCode(65 + (barberIndex % 26))
-    : '#';
-  return `${prefix}${ticketNumber}`;
-}
-
 export default function CustomerBookingPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -63,7 +55,7 @@ export default function CustomerBookingPage() {
           .eq('shop_id', shop.id)
           .eq('status', 'waiting');
         const counts: Record<string, number> = {};
-        (waitingTickets || []).forEach((t: any) => {
+        (waitingTickets || []).forEach((t: { barber_id: string; people_count: number }) => {
           if (t.barber_id) {
             counts[t.barber_id] = (counts[t.barber_id] || 0) + (t.people_count || 1);
           }
@@ -89,7 +81,7 @@ export default function CustomerBookingPage() {
       const { data: waitingTickets } = await supabase.from('tickets').select('barber_id, people_count').eq('shop_id', shopData.id).eq('status', 'waiting');
       const counts: Record<string, number> = {};
       bList.forEach(b => { counts[b.id] = 0; });
-      (waitingTickets || []).forEach((t: any) => {
+      (waitingTickets || []).forEach((t: { barber_id: string; people_count: number }) => {
         if (t.barber_id && counts[t.barber_id] !== undefined) counts[t.barber_id] += (t.people_count || 1);
       });
       setBarberQueueCounts(counts);

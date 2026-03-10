@@ -14,7 +14,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { playTicketSound } from '@/lib/notificationSound';
-import { getTicketCode } from '@/pages/CustomerBookingPage';
+import { getTicketCode } from '@/lib/utils';
 import type { Ticket, Shop, Barber } from '@/types/database';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
@@ -49,6 +49,7 @@ export default function TVDisplayPage() {
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     // Track per-barber serving ticket ids to detect changes
     const prevServingMapRef = useRef<Map<string, string>>(new Map());
+    const subscribeRef = useRef<(shopId: string) => void>(() => {});
 
     // ── Build per-barber queue from a flat ticket list ─────────────────────────
     const buildQueues = useCallback(
@@ -167,7 +168,7 @@ export default function TVDisplayPage() {
                         setReconnecting(true);
                         if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
                         reconnectTimerRef.current = setTimeout(() => {
-                            subscribe(shopId);
+                            subscribeRef.current(shopId);
                             fetchQueue(shopId, true);
                         }, delay);
                     }
@@ -177,6 +178,11 @@ export default function TVDisplayPage() {
         },
         [fetchQueue]
     );
+
+    // Keep ref up-to-date
+    useEffect(() => {
+        subscribeRef.current = subscribe;
+    }, [subscribe]);
 
     // ── Boot after overlay ────────────────────────────────────────────────────
     useEffect(() => {

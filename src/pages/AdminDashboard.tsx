@@ -15,7 +15,7 @@ import { Plus, LogOut, Archive, Users, Scissors, ChevronLeft, X, Loader2, CheckC
 import { toast } from 'sonner';
 import { printThermalTicket } from '@/components/ThermalTicket';
 import { playTicketSound } from '@/lib/notificationSound';
-import { getTicketCode } from '@/pages/CustomerBookingPage';
+import { getTicketCode } from '@/lib/utils';
 
 /* ─── helpers ─── */
 import { cn, getCustomerBaseUrl, getBarberBaseUrl } from '@/lib/utils';
@@ -319,6 +319,12 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('pointerdown', unlockAudio);
   }, []);
 
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { navigate('/'); return; }
+    loadShopData(session.user.id);
+  };
+
   useEffect(() => { checkAuth(); }, []);
 
   // Subscribe once when shop loads; use refs for callbacks to avoid stale closures
@@ -330,7 +336,7 @@ export default function AdminDashboard() {
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` },
         (payload) => {
-          const isManual = (payload.new as any)?.user_session_id?.startsWith('manual_');
+          const isManual = (payload.new as { user_session_id?: string })?.user_session_id?.startsWith('manual_');
           if (!isManual && soundEnabledRef.current) playTicketSound();
           loadTicketsRef.current();
         }
@@ -360,12 +366,6 @@ export default function AdminDashboard() {
 
     return () => { supabase.removeChannel(channel); };
   }, [shop?.id]);
-
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { navigate('/'); return; }
-    loadShopData(session.user.id);
-  };
 
   const loadShopData = async (userId: string, retries = 3) => {
     try {

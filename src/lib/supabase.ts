@@ -22,7 +22,7 @@ function getCookie(name: string): string | null {
 function setCookie(name: string, value: string, days: number) {
   const d = new Date();
   d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
-  let expires = "expires=" + d.toUTCString();
+  const expires = "expires=" + d.toUTCString();
   document.cookie = name + "=" + value + ";" + expires + ";path=/;SameSite=Lax";
 }
 

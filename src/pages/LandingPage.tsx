@@ -35,7 +35,7 @@ export default function LandingPage() {
   }, []);
 
   const handleAppDownload = () => {
-    // Navigate straight to the admin subdomain.
+    // Navigate to admin subdomain for app download
     window.location.href = 'https://admin-barberticket.vercel.app';
   };
 
