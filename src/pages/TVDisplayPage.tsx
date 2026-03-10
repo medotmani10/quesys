@@ -64,18 +64,17 @@ function PinEntryScreen({ onSuccess }: { onSuccess: (shopId: string, shopName: s
                 inputRefs.current[index + 1]?.focus();
             }
 
-            // Auto-validate once 4th digit entered
             if (digit && index === 3) {
                 const pin = [...newDigits.slice(0, 3), digit].join('');
                 if (pin.length === 4) {
-                    await validatePin(pin, newDigits);
+                    await validatePin(pin);
                 }
             }
         },
         [digits]
     );
 
-    const validatePin = async (pin: string, currentDigits: string[]) => {
+    const validatePin = async (pin: string) => {
         setChecking(true);
         try {
             const { data, error: err } = await supabase
@@ -207,14 +206,14 @@ export default function TVDisplayPage() {
     const [started, setStarted] = useState(false);
     const [shop, setShop] = useState<ShopData | null>(null);
     const [queues, setQueues] = useState<BarberQueue[]>([]);
-    const [error, setError] = useState<string | null>(null);
+    const [error] = useState<string | null>(null);
     const [reconnecting, setReconnecting] = useState(false);
 
     const channelRef = useRef<RealtimeChannel | null>(null);
     const reconnectAttemptRef = useRef(0);
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevServingMapRef = useRef<Map<string, string>>(new Map());
-    const subscribeRef = useRef<(shopId: string) => void>(() => {});
+    const subscribeRef = useRef<(shopId: string) => void>(() => { });
 
     // ── Check localStorage on mount ───────────────────────────────────────────
     useEffect(() => {
