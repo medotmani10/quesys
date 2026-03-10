@@ -478,51 +478,40 @@ export default function TVDisplayPage() {
         <div dir="rtl" className="tv-bg fixed inset-0 text-white overflow-hidden flex flex-col">
             <div className="tv-grid-overlay pointer-events-none" />
 
-            {/* ── HEADER ─────────────────────────────────────────────────────────── */}
-            <header className="relative z-10 flex items-center justify-between px-8 py-4 shrink-0 border-b border-white/5">
-                <div className="flex items-center gap-4">
+            {/* ── NEW HEADER (Mockup Style) ─────────────────────────────────────────────────────────── */}
+            <header className="relative z-10 flex flex-col md:flex-row items-center justify-between px-12 py-8 shrink-0">
+                {/* Right side (RTL) -> Time & Date */}
+                <div className="flex flex-col items-start min-w-[200px]">
+                    <LiveClock />
+                    <LiveDate />
+                </div>
+
+                {/* Left side (RTL) -> Shop Info */}
+                <div className="flex items-center gap-6">
+                    <div className="flex flex-col items-end">
+                        <h2 className="text-3xl font-bold text-amber-500 drop-shadow-md">{shop?.name ?? '…'}</h2>
+                        <p className="text-zinc-500 text-lg uppercase tracking-[0.3em]">Premium Grooming</p>
+                    </div>
                     {shop?.logo_url ? (
                         <div className="relative">
-                            <div className="absolute inset-0 rounded-full bg-amber-400/20 blur-xl" />
+                            <div className="absolute inset-0 rounded-2xl bg-amber-500/20 blur-xl" />
                             <img
                                 src={shop.logo_url}
                                 alt={shop.name}
-                                className="relative w-14 h-14 rounded-full object-cover border-2 border-amber-500/50 shadow-[0_0_24px_rgba(245,158,11,0.4)]"
+                                className="relative w-16 h-16 rounded-2xl object-cover border-2 border-amber-500/50 shadow-[0_0_24px_rgba(245,158,11,0.4)]"
                             />
                         </div>
                     ) : (
-                        <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-3xl">
-                            ✂️
+                        <div className="h-16 w-16 bg-amber-500 rounded-2xl flex items-center justify-center text-zinc-950 shadow-[0_0_24px_rgba(245,158,11,0.4)]">
+                            <span className="text-4xl">✂️</span>
                         </div>
                     )}
-                    <div>
-                        <p className="text-xs text-white/70 font-medium tracking-widest uppercase drop-shadow-sm">صالون</p>
-                        <h1 className="text-2xl font-black text-white leading-tight drop-shadow-md">{shop?.name ?? '…'}</h1>
-                    </div>
-                </div>
-
-                <div className="flex-1 mx-8 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent" />
-
-                <div className="flex items-center gap-5">
-                    {reconnecting ? (
-                        <span className="flex items-center gap-2 text-amber-400 text-sm font-medium animate-pulse">
-                            <span className="w-2 h-2 rounded-full bg-amber-400" />
-                            إعادة الاتصال…
-                        </span>
-                    ) : (
-                        <span className="flex items-center gap-2 text-emerald-400 text-sm font-bold drop-shadow-md">
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-dot" />
-                            بث مباشر
-                        </span>
-                    )}
-                    <div className="w-px h-5 bg-zinc-700" />
-                    <LiveClock />
                 </div>
             </header>
 
             {/* ── BARBER COLUMNS ─────────────────────────────────────────────────── */}
             <main
-                className="relative z-10 flex-1 min-h-0 grid gap-0"
+                className="relative z-10 flex-[1] min-h-0 grid gap-8 px-12 pb-8"
                 style={{ gridTemplateColumns: `repeat(${Math.max(1, queues.length)}, minmax(0, 1fr))` }}
             >
                 {queues.map((bq, idx) => (
@@ -530,13 +519,12 @@ export default function TVDisplayPage() {
                         key={bq.barber.id}
                         bq={bq}
                         barberIndex={idx}
-                        isLast={idx === queues.length - 1}
                         totalBarbers={queues.length}
                     />
                 ))}
 
                 {queues.length === 0 && (
-                    <div className="flex items-center justify-center">
+                    <div className="col-span-full flex items-center justify-center">
                         <div className="flex flex-col items-center gap-4 opacity-70">
                             <div className="text-5xl animate-pulse drop-shadow-lg">✂️</div>
                             <p className="text-white text-xl font-bold drop-shadow-md">جاري تحميل البيانات…</p>
@@ -545,13 +533,24 @@ export default function TVDisplayPage() {
                 )}
             </main>
 
-            <footer className="relative z-10 flex items-center justify-center px-8 py-3 border-t border-white/10 shrink-0 bg-black/20 backdrop-blur-sm">
-                <div className="flex items-center gap-6 text-white/80 font-medium text-sm drop-shadow-md">
-                    <span>نظام إدارة الطابور الذكي</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/50" />
-                    <span>{queues.length} حلاق نشط</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/50" />
-                    <span>{queues.reduce((s, bq) => s + bq.waiting.reduce((acc, t) => acc + (t.people_count || 1), 0), 0)} شخص في الانتظار</span>
+            {/* ── NEW FOOTER ────────────────────────────────────────────────────── */}
+            <footer className="relative z-10 flex items-center justify-between py-6 px-12 border-t border-zinc-900 bg-black/40 backdrop-blur-md shrink-0">
+                <div className="flex items-center gap-8">
+                    <div className="flex items-center gap-2 text-zinc-500">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-dot" />
+                        <span className="text-sm font-bold uppercase tracking-widest leading-none mt-1">
+                            {reconnecting ? 'Reconnecting...' : 'Network Secure'}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-zinc-500">
+                        <span className="text-sm font-bold uppercase tracking-widest leading-none mt-1">
+                            {queues.reduce((s, bq) => s + bq.waiting.reduce((acc, t) => acc + (t.people_count || 1), 0), 0)} في الانتظار المجموع
+                        </span>
+                    </div>
+                </div>
+                <div className="flex items-center gap-4 px-6 py-2 bg-zinc-900 rounded-full border border-zinc-800">
+                    <div className="h-2 w-2 rounded-full bg-amber-500"></div>
+                    <span className="text-zinc-400 text-xs font-bold uppercase tracking-widest mt-0.5">النظام يعمل • v3.0.0</span>
                 </div>
             </footer>
         </div>
@@ -564,148 +563,128 @@ export default function TVDisplayPage() {
 function BarberColumn({
     bq,
     barberIndex,
-    isLast,
     totalBarbers,
 }: {
     bq: BarberQueue;
     barberIndex: number;
-    isLast: boolean;
     totalBarbers: number;
 }) {
-    const numFontSize =
-        totalBarbers >= 5
-            ? 'clamp(3rem, 6vw, 6rem)'
-            : totalBarbers === 4
-                ? 'clamp(4rem, 8vw, 8rem)'
-                : totalBarbers === 3
-                    ? 'clamp(5rem, 11vw, 10rem)'
-                    : 'clamp(6rem, 14vw, 14rem)';
-
+    // Top Card (Now Serving)
     return (
-        <div
-            className={`
-        flex flex-col h-full min-w-0
-        ${!isLast ? 'border-l border-white/5' : ''}
-      `}
-        >
-            {/* Barber name header */}
-            <div className="flex items-center justify-between py-4 px-4 border-b border-white/20 bg-white/10 backdrop-blur-md shrink-0 shadow-sm min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)] shrink-0" />
-                    <span className="text-white font-black text-xl lg:text-2xl tracking-wide drop-shadow-md truncate min-w-0">{bq.barber.name}</span>
+        <div className="flex flex-col h-full min-w-0 gap-6">
+
+            {/* Now Serving Card */}
+            <div className="flex flex-col bg-zinc-900/50 border-2 border-amber-500/20 rounded-[2rem] p-8 relative overflow-hidden min-h-[40vh] shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+                {/* Subtle Background Pattern */}
+                <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-500 via-transparent to-transparent"></div>
+
+                {/* Status Indicator */}
+                <div className="flex items-center gap-4 mb-4 relative z-10">
+                    <span className="relative flex h-4 w-4">
+                        <span className={`absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75 ${bq.serving ? 'animate-ping' : ''}`}></span>
+                        <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500"></span>
+                    </span>
+                    <h3 className="text-zinc-400 text-xl font-bold uppercase tracking-widest mt-1">الرقم الحالي</h3>
                 </div>
-                {/* Total waiting people badge for this barber */}
-                {bq.waiting.length > 0 && (
-                    <div className="flex flex-col items-end shrink-0">
-                        <span className="bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold text-xs lg:text-sm px-2 py-0.5 rounded-md whitespace-nowrap">
-                            {bq.waiting.reduce((acc, t) => acc + (t.people_count || 1), 0)} أشخاص انتظار
-                        </span>
-                    </div>
-                )}
-            </div>
 
-            {/* Currently Serving */}
-            <div className="flex flex-col items-center justify-center flex-[3] gap-2 px-4 relative overflow-hidden">
-                {bq.serving && (
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-48 h-48 rounded-full bg-amber-500/5 blur-3xl" />
-                    </div>
-                )}
-
-                <p className="text-white/90 text-sm font-bold tracking-widest uppercase z-10 drop-shadow-md">
-                    الرقم الحالي
-                </p>
-
-                {bq.serving ? (
-                    <div className="flex flex-col items-center gap-1 z-10">
-                        <div
-                            className={`font-black leading-none select-none text-amber-400 drop-shadow-[0_0_30px_rgba(245,158,11,0.5)] ${bq.pulsing ? 'animate-tv-pulse' : ''
-                                }`}
-                            style={{ fontSize: numFontSize }}
-                        >
-                            {getTicketCode(barberIndex, bq.serving.ticket_number)}
-                        </div>
-                        {bq.serving.customer_name && (
-                            <div className="flex flex-col items-center mt-2">
-                                <p className="text-white text-lg lg:text-xl font-bold truncate w-full px-2 text-center drop-shadow-lg min-w-0">
-                                    {bq.serving.customer_name}
-                                </p>
-                                {bq.serving.people_count > 1 && (
-                                    <span className="mt-1 bg-yellow-400/20 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-2.5 py-1 rounded-md">
-                                        {bq.serving.people_count} أشخاص
-                                    </span>
-                                )}
+                {/* Ticket Number */}
+                <div className="flex-1 flex flex-col items-center justify-center relative z-10 animate-pulse-subtle my-6">
+                    {bq.serving ? (
+                        <>
+                            <span className="text-zinc-500 text-sm md:text-lg font-bold uppercase tracking-[0.3em] mb-2 md:mb-4">رقم التذكرة</span>
+                            <div
+                                className={`font-black text-amber-500 text-glow-amber tracking-tighter leading-none ${bq.pulsing ? 'animate-tv-pulse' : ''}`}
+                                style={{
+                                    fontSize: totalBarbers >= 4 ? '7rem' : totalBarbers === 3 ? '10rem' : '12rem'
+                                }}
+                            >
+                                {getTicketCode(barberIndex, bq.serving.ticket_number)}
                             </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="flex flex-col items-center gap-2 opacity-20 z-10">
-                        <div
-                            className="font-black leading-none text-white/40 drop-shadow-md"
-                            style={{ fontSize: numFontSize }}
-                        >
-                            ـ
+                        </>
+                    ) : (
+                        <div className="flex flex-col items-center gap-4 opacity-30">
+                            <span className="text-8xl">🛋️</span>
+                            <p className="text-zinc-400 font-bold text-2xl uppercase tracking-widest">فارغ</p>
                         </div>
-                        <p className="text-white/60 font-medium text-base drop-shadow-md">لا يوجد الآن</p>
+                    )}
+                </div>
+
+                {/* Barber & Customer Info Pills */}
+                <div className="mt-auto flex flex-wrap gap-4 relative z-10">
+                    <div className="px-6 py-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3">
+                        <span className="text-xl">✂️</span>
+                        <span className="text-lg lg:text-xl font-bold text-slate-200 truncate max-w-[150px] lg:max-w-full">{bq.barber.name}</span>
                     </div>
-                )}
+                    {bq.serving?.customer_name && (
+                        <div className="px-6 py-3 bg-zinc-800 rounded-2xl flex items-center gap-3 border border-zinc-700">
+                            <span className="text-xl">👤</span>
+                            <span className="text-lg lg:text-xl font-bold text-slate-200 truncate max-w-[150px] lg:max-w-full">{bq.serving.customer_name}</span>
+                            {bq.serving.people_count > 1 && (
+                                <span className="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded text-sm font-bold ml-1">
+                                    {bq.serving.people_count}
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Divider */}
-            <div className="mx-6 h-px bg-white/5 shrink-0" />
+            {/* Up Next / Queue Sidebar (Underneath) */}
+            <div className="flex flex-col flex-1 min-h-0 bg-black/20 rounded-[2rem] p-6 border border-zinc-800/50">
+                <div className="flex items-center justify-between mb-6 px-2">
+                    <h3 className="text-zinc-400 text-xl font-bold uppercase tracking-widest">في الانتظار التالي</h3>
+                    {bq.waiting.length > 0 && (
+                        <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 font-bold text-xs px-2 py-1 rounded-md">
+                            {bq.waiting.reduce((acc, t) => acc + (t.people_count || 1), 0)} أشخاص
+                        </span>
+                    )}
+                </div>
 
-            {/* Waiting list */}
-            <div className="flex flex-col flex-[2] min-h-0 px-3 py-3 gap-2 overflow-hidden">
-                <p className="text-white/90 font-bold text-sm tracking-widest text-center shrink-0 mb-2 drop-shadow-md">
-                    في الانتظار
-                </p>
-
-                {bq.waiting.length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center min-h-0">
-                        <p className="text-white/50 font-medium text-sm drop-shadow-md">لا يوجد انتظار</p>
-                    </div>
-                ) : (
-                    <div className="flex flex-col gap-1.5 overflow-y-auto min-h-0 pr-1 pb-4 scrollbar-hide">
-                        {bq.waiting.map((ticket, i) => (
-                            <SmallWaitingRow key={ticket.id} barberIndex={barberIndex} ticket={ticket} rank={i} />
-                        ))}
-                    </div>
-                )}
+                <div className="flex-1 overflow-y-auto px-2 pb-2 flex flex-col gap-4 scrollbar-hide">
+                    {bq.waiting.length === 0 ? (
+                        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 p-6 rounded-[1.5rem] flex items-center justify-center mt-4">
+                            <span className="text-zinc-600 text-lg font-medium italic">لا يوجد أحد في الانتظار...</span>
+                        </div>
+                    ) : (
+                        bq.waiting.map((ticket, i) => (
+                            <div key={ticket.id} className="bg-zinc-900/60 border border-zinc-800 p-5 md:p-6 rounded-[1.5rem] flex items-center justify-between shadow-lg backdrop-blur-sm">
+                                <div className="flex flex-col">
+                                    <span className="text-zinc-500 text-xs md:text-sm font-bold uppercase tracking-widest mb-1">دور #{i + 1}</span>
+                                    <span className="text-3xl md:text-4xl font-black text-slate-300">
+                                        {getTicketCode(barberIndex, ticket.ticket_number)}
+                                    </span>
+                                </div>
+                                <div className="text-right flex flex-col items-end">
+                                    <span className="text-amber-500/90 text-lg md:text-xl font-bold truncate max-w-[120px] md:max-w-[180px]">
+                                        {ticket.customer_name || 'عميل'}
+                                    </span>
+                                    {ticket.people_count > 1 && (
+                                        <div className="text-zinc-500 text-sm font-medium mt-1">
+                                            {ticket.people_count} أشخاص
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
             </div>
+
         </div>
     );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SmallWaitingRow
-// ─────────────────────────────────────────────────────────────────────────────
-function SmallWaitingRow({ ticket, barberIndex, rank }: { ticket: Ticket; barberIndex: number; rank: number }) {
-    const fadeLevels = ['opacity-90', 'opacity-80', 'opacity-70', 'opacity-60', 'opacity-50', 'opacity-40'];
-    const opacity = fadeLevels[Math.min(rank, fadeLevels.length - 1)];
+function LiveDate() {
+    const [date, setDate] = useState(() => fmtDate(new Date()));
+    useEffect(() => {
+        // Update date once a minute
+        const id = setInterval(() => setDate(fmtDate(new Date())), 60000);
+        return () => clearInterval(id);
+    }, []);
     return (
-        <div
-            className={`
-        flex items-center justify-between
-        rounded-xl border border-white/30 bg-white/10 backdrop-blur-md
-        px-4 py-3 ${opacity} transition-all shadow-xl
-      `}
-        >
-            <span className="font-black text-amber-400 text-2xl lg:text-3xl leading-none drop-shadow-md shrink-0">
-                {getTicketCode(barberIndex, ticket.ticket_number)}
-            </span>
-            {ticket.customer_name && (
-                <div className="flex items-center gap-2 min-w-0">
-                    {ticket.people_count > 1 && (
-                        <span className="bg-yellow-400/20 border border-yellow-400/30 text-yellow-400 text-xs font-bold px-2 py-0.5 rounded-md whitespace-nowrap">
-                            {ticket.people_count} أشخاص
-                        </span>
-                    )}
-                    <span className="text-white font-bold text-sm lg:text-base truncate min-w-0 drop-shadow-md">
-                        {ticket.customer_name}
-                    </span>
-                </div>
-            )}
-        </div>
+        <p className="text-zinc-500 text-lg md:text-xl font-medium tracking-widest uppercase">
+            {date}
+        </p>
     );
 }
 
@@ -719,12 +698,16 @@ function LiveClock() {
         return () => clearInterval(id);
     }, []);
     return (
-        <span className="text-white/90 text-xl font-mono font-bold tabular-nums drop-shadow-md">
+        <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-slate-100 drop-shadow-lg">
             {time}
-        </span>
+        </h1>
     );
 }
 
 function fmtTime(d: Date) {
     return d.toLocaleTimeString('ar-DZ', { hour: '2-digit', minute: '2-digit' });
+}
+
+function fmtDate(d: Date) {
+    return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 }

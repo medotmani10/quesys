@@ -195,17 +195,63 @@
 
 /* PIN input shake on wrong code */
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  15%       { transform: translateX(-8px); }
-  30%       { transform: translateX(8px); }
-  45%       { transform: translateX(-6px); }
-  60%       { transform: translateX(6px); }
-  75%       { transform: translateX(-3px); }
-  90%       { transform: translateX(3px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  15% {
+    transform: translateX(-8px);
+  }
+
+  30% {
+    transform: translateX(8px);
+  }
+
+  45% {
+    transform: translateX(-6px);
+  }
+
+  60% {
+    transform: translateX(6px);
+  }
+
+  75% {
+    transform: translateX(-3px);
+  }
+
+  90% {
+    transform: translateX(3px);
+  }
 }
 
 .animate-shake {
   animation: shake 0.55s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* ── New TV Redesign Animations ────────────────────────────────────────────── */
+
+@keyframes pulse-subtle {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s ease-in-out infinite;
+}
+
+.text-glow-amber {
+  text-shadow: 0 0 40px rgba(245, 158, 11, 0.4);
 }
 
 /* ── TV Display — premium background ───────────────────────────────────────── */
@@ -214,12 +260,12 @@
 .tv-bg {
   background-color: #040406;
   background-image:
-    /* Heavy vignette so edges and top are nearly pitch black */
-    radial-gradient(ellipse 100% 100% at 50% 50%, transparent 10%, rgba(0, 0, 0, 0.95) 100%),
-    /* Very dark base fade: image is only slightly visible */
-    linear-gradient(to top, rgba(0, 0, 0, 0.98) 0%, rgba(0, 0, 0, 0.85) 50%, rgba(0, 0, 0, 0.8) 100%),
+    /* Lighter vignette so edges aren't fully pitch black */
+    radial-gradient(ellipse 100% 100% at 50% 50%, transparent 10%, rgba(0, 0, 0, 0.85) 100%),
+    /* Lighter base fade: image is much more visible now */
+    linear-gradient(to top, rgba(0, 0, 0, 0.90) 0%, rgba(0, 0, 0, 0.60) 40%, rgba(0, 0, 0, 0.40) 100%),
     /* Subtle amber warmth at bottom-center */
-    radial-gradient(ellipse 70% 45% at 50% 110%, rgba(245, 158, 11, 0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 70% 45% at 50% 110%, rgba(245, 158, 11, 0.15) 0%, transparent 70%),
     /* The actual barbershop photo */
     url('/hero-bg.png');
   background-size: cover;
