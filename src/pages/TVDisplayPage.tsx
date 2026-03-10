@@ -589,9 +589,19 @@ function BarberColumn({
       `}
         >
             {/* Barber name header */}
-            <div className="flex items-center justify-center gap-2 py-4 px-4 border-b border-white/20 bg-white/10 backdrop-blur-md shrink-0 shadow-sm min-w-0">
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)] shrink-0" />
-                <span className="text-white font-black text-xl lg:text-2xl tracking-wide drop-shadow-md truncate min-w-0">{bq.barber.name}</span>
+            <div className="flex items-center justify-between py-4 px-4 border-b border-white/20 bg-white/10 backdrop-blur-md shrink-0 shadow-sm min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)] shrink-0" />
+                    <span className="text-white font-black text-xl lg:text-2xl tracking-wide drop-shadow-md truncate min-w-0">{bq.barber.name}</span>
+                </div>
+                {/* Total waiting people badge for this barber */}
+                {bq.waiting.length > 0 && (
+                    <div className="flex flex-col items-end shrink-0">
+                        <span className="bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold text-xs lg:text-sm px-2 py-0.5 rounded-md whitespace-nowrap">
+                            {bq.waiting.reduce((acc, t) => acc + (t.people_count || 1), 0)} أشخاص انتظار
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Currently Serving */}
