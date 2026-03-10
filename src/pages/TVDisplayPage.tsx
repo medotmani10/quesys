@@ -19,7 +19,7 @@ import type { Ticket, Shop, Barber } from '@/types/database';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const MAX_WAITING_PER_BARBER = 4;
+const MAX_WAITING_PER_BARBER = 50;
 const RECONNECT_DELAYS_MS = [500, 2000, 8000];
 const LS_KEY = 'tv_auth_shop_id';
 
@@ -665,8 +665,8 @@ function BarberColumn({
                         <p className="text-white/50 font-medium text-sm drop-shadow-md">لا يوجد انتظار</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-1.5 overflow-hidden min-h-0">
-                        {bq.waiting.slice(0, 4).map((ticket, i) => (
+                    <div className="flex flex-col gap-1.5 overflow-y-auto min-h-0 pr-1 pb-4 scrollbar-hide">
+                        {bq.waiting.map((ticket, i) => (
                             <SmallWaitingRow key={ticket.id} barberIndex={barberIndex} ticket={ticket} rank={i} />
                         ))}
                     </div>
@@ -680,7 +680,8 @@ function BarberColumn({
 // SmallWaitingRow
 // ─────────────────────────────────────────────────────────────────────────────
 function SmallWaitingRow({ ticket, barberIndex, rank }: { ticket: Ticket; barberIndex: number; rank: number }) {
-    const opacity = ['opacity-80', 'opacity-60', 'opacity-40', 'opacity-30'][Math.min(rank, 3)];
+    const fadeLevels = ['opacity-90', 'opacity-80', 'opacity-70', 'opacity-60', 'opacity-50', 'opacity-40'];
+    const opacity = fadeLevels[Math.min(rank, fadeLevels.length - 1)];
     return (
         <div
             className={`
