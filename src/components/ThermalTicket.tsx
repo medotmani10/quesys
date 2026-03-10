@@ -1,7 +1,7 @@
 import { QRCodeSVG } from 'qrcode.react';
 import { getCustomerBaseUrl } from '@/lib/utils';
 
-// تنظيف أكواد HTML قبل الطباعة لمنع الأخطاء
+// ✅ FIXED C-4: strip script tags and event handlers from HTML before printing
 function sanitizeHtml(html: string): string {
     return html
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
@@ -9,6 +9,8 @@ function sanitizeHtml(html: string): string {
         .replace(/\son\w+\s*=[^\s>]*/gi, '')
         .replace(/javascript:/gi, 'blocked:');
 }
+
+
 
 interface ThermalTicketProps {
     ticketNumber: number;
@@ -35,8 +37,6 @@ export function ThermalTicket({
 }: ThermalTicketProps) {
     const customerBase = getCustomerBaseUrl();
     const trackingUrl = `${customerBase}/${shopSlug}/ticket/${ticketId}`;
-
-    // توليد كود التذكرة (مثل A1, B2...)
     const code = barberIndex !== undefined && barberIndex >= 0
         ? `${String.fromCharCode(65 + (barberIndex % 26))}${ticketNumber}`
         : `${ticketNumber}`;
@@ -56,78 +56,114 @@ export function ThermalTicket({
         <div
             id="thermal-ticket-content"
             style={{
-                width: '220px', // العرض المثالي لطابعات 58mm
+                width: '220px', // Explicit 220px (~58mm) to stop html-to-image clipping
                 fontFamily: '"Cairo", "Noto Kufi Arabic", monospace',
                 backgroundColor: '#fff',
                 color: '#000',
-                padding: '10px',
+                padding: '16px 12px',
                 boxSizing: 'border-box',
                 direction: 'rtl',
                 textAlign: 'center',
+                position: 'relative'
             }}
         >
-            {/* رأس التذكرة (مضغوط) */}
-            <div style={{ borderBottom: '1px solid #000', paddingBottom: '3px', marginBottom: '5px' }}>
-                <div style={{ fontSize: '12pt', fontWeight: '900' }}>✂ {shopName}</div>
-                <div style={{ fontSize: '7pt', color: '#444', marginTop: '2px' }}>
-                    {dateStr} | {timeStr}
+            {/* Minimal Header */}
+            <div style={{ paddingBottom: '3mm', marginBottom: '2mm' }}>
+                <div style={{ fontSize: '12pt', fontWeight: '900', letterSpacing: '-0.5px' }}>{shopName}</div>
+                <div style={{ fontSize: '6.5pt', color: '#666', marginTop: '1mm', display: 'flex', justifyContent: 'center', gap: '3mm' }}>
+                    <span>{dateStr}</span>
+                    <span>{timeStr}</span>
                 </div>
             </div>
 
-            {/* رقم الدور (البطل) */}
-            <div style={{ margin: '5px 0' }}>
-                <div style={{ fontSize: '9pt', fontWeight: '700', color: '#555' }}>رقم دورك</div>
+            {/* Separator - subtle */}
+            <div style={{ borderTop: '1px solid #eee', width: '80%', margin: '0 auto 3mm auto' }} />
+
+            {/* The Hero Section */}
+            <div style={{ margin: '5mm 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <div style={{ fontSize: '11pt', fontWeight: '700', color: '#111', marginBottom: '3mm' }}>
+                    رقم دورك
+                </div>
+
+                {/* Massive Number Pill */}
                 <div style={{
-                    fontSize: '42pt',
+                    fontSize: '44pt',
                     fontWeight: '900',
                     lineHeight: '1',
-                    padding: '2px 0',
+                    border: '3px solid #000',
+                    borderRadius: '20px',
+                    padding: '3mm 8mm',
+                    margin: '0 auto',
                     textAlign: 'center',
+                    display: 'inline-block',
+                    backgroundColor: '#000',
+                    color: '#fff',
+                    letterSpacing: '-1px'
                 }}>
                     {code}
                 </div>
+
+                {/* Status Badge right beneath */}
+                <div style={{
+                    marginTop: '3mm',
+                    fontSize: '8.5pt',
+                    fontWeight: '700',
+                    color: '#444',
+                    letterSpacing: '-0.3px',
+                }}>
+                    في قائمة الانتظار ⏳
+                </div>
             </div>
 
-            <div style={{ borderTop: '1px dashed #000', margin: '5px 0' }} />
-
-            {/* القسم المدمج: معلومات العميل + QR Code في سطر واحد */}
+            {/* Sub-hero details */}
             <div style={{
+                margin: '4mm 0',
+                padding: '2mm 0',
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                textAlign: 'right',
-                margin: '5px 0'
+                flexDirection: 'column',
+                gap: '1.5mm',
+                background: '#f9f9f9',
+                borderRadius: '8px'
             }}>
-                {/* قسم المعلومات (يمين) */}
-                <div style={{ flex: 1, paddingLeft: '5px' }}>
-                    <div style={{ fontSize: '11pt', fontWeight: '900', marginBottom: '3px' }}>{customerName}</div>
-                    {barberName && (
-                        <div style={{ fontSize: '9pt', color: '#333' }}>
-                            مع: <strong>{barberName}</strong>
-                        </div>
-                    )}
-                    {peopleCount > 1 && (
-                        <div style={{ fontSize: '8pt', color: '#555', marginTop: '2px' }}>
-                            العدد: {peopleCount}
-                        </div>
-                    )}
+                <div style={{ fontSize: '8.5pt', fontWeight: '700', color: '#000' }}>
+                    العميل: {customerName}
                 </div>
+                <div style={{ fontSize: '8.5pt', fontWeight: '700', color: '#000' }}>
+                    مع الحلاق: {barberName || 'الكل'}
+                </div>
+                {peopleCount > 1 && (
+                    <div style={{ fontSize: '8pt', fontWeight: '700', color: '#555' }}>
+                        عدد الأشخاص: {peopleCount}
+                    </div>
+                )}
+            </div>
 
-                {/* قسم الـ QR (يسار) بدون الرابط النصي */}
-                <div style={{ flexShrink: 0 }}>
+            {/* Separator */}
+            <div style={{ borderTop: '1px dashed #ccc', margin: '4mm 0' }} />
+
+            {/* QR Code Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2mm', marginBottom: '1mm' }}>
+                <div style={{ fontSize: '7.5pt', fontWeight: '700', color: '#333' }}>
+                    امسح الكود لمتابعة دورك من هاتفك
+                </div>
+                <div style={{ padding: '2mm', background: '#fff', borderRadius: '4px' }}>
                     <QRCodeSVG
                         value={trackingUrl}
-                        size={65} // حجم مصغر ومناسب
-                        level="L"
+                        size={85}
+                        level="M"
                         bgColor="#ffffff"
                         fgColor="#000000"
+                        style={{ display: 'block' }}
                     />
+                </div>
+                <div style={{ fontSize: '6pt', color: '#888', wordBreak: 'break-all', textAlign: 'center', direction: 'ltr', maxWidth: '80%' }}>
+                    {trackingUrl}
                 </div>
             </div>
 
-            {/* تذييل التذكرة */}
-            <div style={{ borderTop: '1px solid #000', marginTop: '5px', paddingTop: '4px', fontSize: '7pt', fontWeight: 'bold' }}>
-                امسح الكود لمتابعة دورك من هاتفك
+            {/* Footer */}
+            <div style={{ marginTop: '2mm', fontSize: '6pt', color: '#aaa', fontWeight: '700' }}>
+                BARBER TICKET
             </div>
         </div>
     );
@@ -136,6 +172,7 @@ export function ThermalTicket({
 /* ─── Print function — opens print dialog + auto-downloads PDF ─── */
 export function printThermalTicket(props: ThermalTicketProps) {
     const container = document.createElement('div');
+    // Position off-screen so it doesn't flash
     container.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
     document.body.appendChild(container);
 
@@ -143,11 +180,13 @@ export function printThermalTicket(props: ThermalTicketProps) {
         const root = createRoot(container);
         root.render(<ThermalTicket {...props} />);
 
+        // Wait for React to render
         await new Promise(r => setTimeout(r, 350));
 
         const ticketEl = container.querySelector('#thermal-ticket-content') as HTMLElement;
         if (!ticketEl) { document.body.removeChild(container); return; }
 
+        // ── 1. PDF download (Fixed Arabic using html-to-image + jsPDF) ──
         try {
             const { toPng } = await import('html-to-image');
             const { jsPDF } = await import('jspdf');
@@ -156,22 +195,22 @@ export function printThermalTicket(props: ThermalTicketProps) {
                 ? `${String.fromCharCode(65 + (props.barberIndex % 26))}${props.ticketNumber}`
                 : `${props.ticketNumber}`;
 
+            // We use html-to-image which properly renders Arabic text natively
             const dataUrl = await toPng(ticketEl, {
                 quality: 1,
                 backgroundColor: '#ffffff',
-                pixelRatio: 3,
-                width: 220,
+                pixelRatio: 3, // High-res
+                width: 220, // explicitly enforce the width
                 style: { margin: '0' }
             });
 
-            // تغيير جذري: تم تقليص الطول من 180 إلى 90 ملم لعدم إهدار الورق
             const pdf = new jsPDF({
                 unit: 'mm',
-                format: [58, 90],
+                format: [58, 180],
                 orientation: 'portrait'
             });
 
-            pdf.addImage(dataUrl, 'PNG', 0, 0, 58, 90);
+            pdf.addImage(dataUrl, 'PNG', 0, 0, 58, 180);
             pdf.save(`تذكرة-${code}-${props.customerName}.pdf`);
         } catch (err) {
             console.error('PDF download failed:', err);

@@ -10,8 +10,7 @@
     ],
     "module": "ESNext",
     "types": [
-      "vite/client",
-      "web-bluetooth"
+      "vite/client"
     ],
     "skipLibCheck": true,
     "baseUrl": ".",
