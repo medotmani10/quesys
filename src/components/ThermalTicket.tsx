@@ -39,11 +39,12 @@ export function ThermalTicket({
     barberName,
     barberIndex,
     shopName,
+    shopSlug,
     peopleCount,
     createdAt,
 }: ThermalTicketProps) {
     const customerBase = getCustomerBaseUrl();
-    const trackingUrl = `${customerBase}/t/${ticketId}`;
+    const trackingUrl = `${customerBase}/${shopSlug}/ticket/${ticketId}`;
     const code = barberIndex !== undefined && barberIndex >= 0
         ? `${String.fromCharCode(65 + (barberIndex % 26))}${ticketNumber}`
         : `${ticketNumber}`;
