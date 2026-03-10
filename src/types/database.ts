@@ -53,6 +53,7 @@ export interface Shop {
   phone: string | null
   tv_pin: string | null
   is_open: boolean
+  is_approved: boolean
   created_at: string
 }
 

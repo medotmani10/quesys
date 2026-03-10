@@ -510,7 +510,6 @@ export default function AdminDashboard() {
   const getBarberTickets = (barberId: string | null, status: string) => tickets.filter(t => t.barber_id === barberId && t.status === status);
   const getCurrentServing = (barberId: string) => tickets.find(t => t.barber_id === barberId && t.status === 'serving');
 
-  /* ─── Loading ─── */
   if (loading) return (
     <div className="min-h-[100dvh] bg-black flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
@@ -521,6 +520,36 @@ export default function AdminDashboard() {
   );
 
   if (!shop) return null;
+
+  // ── Approval gate: block unapproved shops ─────────────────────────────────
+  if (!shop.is_approved) {
+    return (
+      <div className="min-h-[100dvh] bg-black text-white flex items-center justify-center p-6" dir="rtl">
+        <div className="max-w-md mx-auto text-center space-y-8 animate-in fade-in duration-700">
+          <div className="w-24 h-24 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center mx-auto shadow-[0_0_60px_rgba(245,158,11,0.2)]">
+            <span className="text-5xl">⏳</span>
+          </div>
+          <div className="space-y-3">
+            <h1 className="text-3xl font-black text-white">طلبك قيد المراجعة</h1>
+            <p className="text-zinc-400 text-lg leading-relaxed">
+              حسابك تحت المراجعة من قِبل الإدارة. سيتم تفعيل صالونك في أقرب وقت وستتمكن من الوصول إلى لوحة التحكم.
+            </p>
+          </div>
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6 text-sm text-zinc-500 space-y-2 text-right">
+            <p>✅ تم إنشاء الحساب بنجاح</p>
+            <p>✅ تم تسجيل بيانات الصالون</p>
+            <p className="text-amber-400">⏳ في انتظار موافقة الإدارة...</p>
+          </div>
+          <button
+            onClick={async () => { await supabase.auth.signOut(); navigate('/'); }}
+            className="text-zinc-600 hover:text-zinc-400 text-sm underline transition-colors"
+          >
+            تسجيل الخروج
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const waitingCount = tickets.filter(t => t.status === 'waiting').reduce((acc, t) => acc + (t.people_count || 1), 0);
   const servingCount = tickets.filter(t => t.status === 'serving').length;

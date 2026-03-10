@@ -15,6 +15,7 @@ export default function OnboardingPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
+  const [pending, setPending] = useState(false);
   const [shopName, setShopName] = useState('');
   const [mapsUrl, setMapsUrl] = useState('');
   const [shopPhone, setShopPhone] = useState('');
@@ -152,7 +153,8 @@ export default function OnboardingPage() {
           logo_url: logoUrl,
           maps_url: mapsUrl || null,
           phone: shopPhone || null,
-          is_open: true,
+          is_open: false,
+          is_approved: false,
         })
         .select()
         .single();
@@ -211,8 +213,8 @@ export default function OnboardingPage() {
         return;
       }
 
-      toast.success('تم إنشاء الصالون بنجاح!');
-      navigate('/admin');
+      toast.success('تم إرسال طلبك! انتظر موافقة الإدارة.');
+      setPending(true);
     } catch {
       toast.error('حدث خطأ غير متوقع');
     } finally {
@@ -380,6 +382,35 @@ export default function OnboardingPage() {
       </div>
     </div>
   );
+
+  if (pending) {
+    return (
+      <div className="min-h-[100dvh] bg-black text-white flex items-center justify-center p-6">
+        <div className="max-w-md mx-auto text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="w-24 h-24 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center mx-auto shadow-[0_0_60px_rgba(245,158,11,0.2)]">
+            <span className="text-5xl">⏳</span>
+          </div>
+          <div className="space-y-3">
+            <h1 className="text-3xl font-black text-white">طلبك قيد المراجعة</h1>
+            <p className="text-zinc-400 text-lg leading-relaxed">
+              تم إنشاء حسابك بنجاح. سيتم مراجعة طلبك من قِبل الإدارة وتفعيل صالونك في أقرب وقت.
+            </p>
+          </div>
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-6 text-sm text-zinc-500 space-y-2 text-right">
+            <p>✅ تم إنشاء الحساب</p>
+            <p>✅ تم تسجيل بيانات الصالون</p>
+            <p className="text-amber-400">⏳ في انتظار موافقة الإدارة...</p>
+          </div>
+          <button
+            onClick={() => { supabase.auth.signOut(); window.location.href = '/'; }}
+            className="text-zinc-600 hover:text-zinc-400 text-sm underline transition-colors"
+          >
+            تسجيل الخروج
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[100dvh] bg-black text-white p-4 relative overflow-hidden flex items-center selection:bg-yellow-400/30">

@@ -14,12 +14,33 @@ import BarberDashboard from '@/pages/BarberDashboard';
 import AdminInstallPrompt from '@/components/AdminInstallPrompt';
 import BarberInstallPrompt from '@/components/BarberInstallPrompt';
 import CustomerInstallPrompt from '@/components/CustomerInstallPrompt';
+import SuperAdminLoginPage from '@/pages/SuperAdminLoginPage';
+import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
 
 function App() {
   const hostname = window.location.hostname;
-  const isAdmin = hostname.includes('admin');
+  const isAdmin = hostname.includes('admin') && !hostname.includes('superadmin');
+  const isSuperAdmin = hostname.includes('superadmin');
   const isBarber = hostname.includes('barber-') || hostname.includes('barber.');
   const isCustomer = hostname.includes('customer') || hostname.includes('costumer');
+
+  // ---------------------------------------------------------------------------
+  // SUPERADMIN ROUTES (superadmin-barberticket.vercel.app)
+  // ---------------------------------------------------------------------------
+  if (isSuperAdmin) {
+    return (
+      <BrowserRouter>
+        <div dir="rtl" className="min-h-[100dvh] bg-background text-foreground">
+          <Routes>
+            <Route path="/" element={<SuperAdminLoginPage />} />
+            <Route path="/superadmin" element={<SuperAdminDashboard />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+          <Toaster position="top-center" richColors />
+        </div>
+      </BrowserRouter>
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // ADMIN ROUTES (admin-barberticket.vercel.app)
