@@ -35,8 +35,6 @@ export default function TicketStatusPage() {
         try {
             const sessionId = await getOrCreateSessionId();
             const urlPin = searchParams.get('pin');
-            const localPinKey = `ticket_pin_${ticketId}`;
-            const storedPin = localStorage.getItem(localPinKey);
 
             // 1. Fetch the ticket with its pin_code
             const { data: rawTicket, error: fetchError } = await supabase
@@ -52,42 +50,23 @@ export default function TicketStatusPage() {
             }
 
             let currentTicket = rawTicket as Ticket;
-            let isAuthorized = false;
 
-            // 2. Authorization Logic
-            if (urlPin && currentTicket.pin_code === urlPin) {
-                // PIN from QR Code is valid: store it and immediately strip from URL
-                localStorage.setItem(localPinKey, urlPin);
-                isAuthorized = true;
-
-                // Clean the URL strictly without triggering a React Router reload
+            // 2. Clean URL if pin exists (optional cleanup)
+            if (urlPin) {
                 const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
                 window.history.replaceState({ path: newUrl }, '', newUrl);
-
-            } else if (storedPin && currentTicket.pin_code === storedPin) {
-                // Return visitor with valid PIN in localStorage
-                isAuthorized = true;
-            } else if (currentTicket.user_session_id === sessionId) {
-                // Original creator of the ticket
-                isAuthorized = true;
-            } else if (currentTicket.user_session_id && currentTicket.user_session_id.startsWith('manual_')) {
-                // Ticket adoption by the first phone that scans it (fallback for legacy/kiosk)
-                if (urlPin && currentTicket.pin_code === urlPin) {
-                    const { error: updateError } = await supabase
-                        .from('tickets')
-                        .update({ user_session_id: sessionId })
-                        .eq('id', ticketId);
-                    if (!updateError) currentTicket.user_session_id = sessionId;
-                    isAuthorized = true;
-                }
             }
 
-            if (!isAuthorized) {
-                setNotFound(true);
-                setLoading(false);
-                return;
+            // Ticket adoption by the first phone that scans it (fallback for legacy/kiosk)
+            if (currentTicket.user_session_id && currentTicket.user_session_id.startsWith('manual_')) {
+                const { error: updateError } = await supabase
+                    .from('tickets')
+                    .update({ user_session_id: sessionId })
+                    .eq('id', ticketId);
+                if (!updateError) currentTicket.user_session_id = sessionId;
             }
 
+            // 3. Unconditionally Authorize (Requested by User)
             setTicket(currentTicket);
 
             // Load shop
