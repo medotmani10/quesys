@@ -456,11 +456,14 @@ export default function AdminSettingsPage() {
                             </Label>
                             <Input
                                 value={shopPhone}
-                                onChange={(e) => setShopPhone(e.target.value)}
+                                onChange={(e) => setShopPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                                 placeholder="05xxxxxxxx"
                                 className="rounded-2xl h-14 bg-black/50 border-zinc-800 focus-visible:ring-yellow-400 focus-visible:border-yellow-400/50 text-white placeholder:text-zinc-700 text-lg transition-all hover:border-zinc-700 text-left"
                                 dir="ltr"
                                 type="tel"
+                                inputMode="numeric"
+                                maxLength={10}
+                                pattern="0[567][0-9]{8}"
                             />
                         </div>
 

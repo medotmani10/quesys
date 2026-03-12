@@ -49,7 +49,7 @@ export default function TicketStatusPage() {
                 return;
             }
 
-            let currentTicket = rawTicket as Ticket;
+            const currentTicket = rawTicket as Ticket;
 
             // 2. Clean URL if pin exists (optional cleanup)
             if (urlPin) {

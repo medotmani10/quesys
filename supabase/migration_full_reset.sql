@@ -185,6 +185,14 @@ BEGIN
         RAISE EXCEPTION 'shop_closed';
     END IF;
 
+    IF p_phone IS NULL OR btrim(p_phone) = '' THEN
+        RAISE EXCEPTION 'invalid_phone';
+    END IF;
+
+    IF p_phone !~ '^0[567][0-9]{8}$' THEN
+        RAISE EXCEPTION 'invalid_phone';
+    END IF;
+
     -- Guard: session must not already have an active ticket at this shop
     IF EXISTS (
         SELECT 1 FROM tickets

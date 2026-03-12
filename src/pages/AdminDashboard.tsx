@@ -414,6 +414,7 @@ export default function AdminDashboard() {
   const handleManualTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!shop || submittingManual) return;
+    if (!manualName.trim() || !manualPhone.trim()) { toast.error('يرجى ملء جميع الحقول'); return; }
     if (!manualBarber) { toast.error('يرجى اختيار الحلاق'); return; }
     if (manualPhone.trim() && !MOROCCO_MOBILE_PHONE_REGEX.test(manualPhone.trim())) { toast.error('رقم الهاتف يجب أن يكون 10 أرقام ويبدأ بـ 05 أو 06 أو 07'); return; }
     setSubmittingManual(true);
@@ -431,7 +432,12 @@ export default function AdminDashboard() {
         p_session_id: sessionId,
       });
 
-      if (error) { toast.error('فشل في إنشاء التذكرة'); setSubmittingManual(false); return; }
+      if (error) {
+        if (error.message.includes('invalid_phone')) toast.error('رقم الهاتف يجب أن يكون 10 أرقام ويبدأ بـ 05 أو 06 أو 07');
+        else toast.error('فشل في إنشاء التذكرة');
+        setSubmittingManual(false);
+        return;
+      }
 
       const insertedTicket = (Array.isArray(ticketData) ? ticketData[0] : ticketData) as Ticket;
       const ticketCode = getTicketCode(barberIndex, insertedTicket.ticket_number);
@@ -754,8 +760,8 @@ export default function AdminDashboard() {
               </div>
               <div className="space-y-2">
                 <Label className="text-zinc-300 text-sm font-bold">رقم الهاتف</Label>
-                <Input value={manualPhone} onChange={(e) => setManualPhone(e.target.value)} placeholder="05xxxxxxxx"
-                  className="rounded-xl h-12 bg-black border-zinc-700 text-white focus-visible:ring-yellow-400 text-left" dir="ltr" required />
+                <Input value={manualPhone} onChange={(e) => setManualPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="05xxxxxxxx"
+                  className="rounded-xl h-12 bg-black border-zinc-700 text-white focus-visible:ring-yellow-400 text-left" dir="ltr" required type="tel" inputMode="numeric" maxLength={10} pattern="0[567][0-9]{8}" />
               </div>
               <div className="space-y-2">
                 <Label className="text-zinc-300 text-sm font-bold">عدد الأشخاص</Label>

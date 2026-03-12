@@ -202,7 +202,11 @@ export default function TVDisplayPage() {
     const { slug } = useParams<{ slug: string }>();
 
     // auth: null = checking, false = not authed, string = shopId
-    const [authShopId, setAuthShopId] = useState<string | null | false>(null);
+    const [authShopId, setAuthShopId] = useState<string | null | false>(() => {
+        if (typeof window === 'undefined') return null;
+        const savedId = localStorage.getItem(LS_KEY);
+        return savedId ? savedId : false;
+    });
     const [started, setStarted] = useState(false);
     const [shop, setShop] = useState<ShopData | null>(null);
     const [queues, setQueues] = useState<BarberQueue[]>([]);
@@ -214,16 +218,6 @@ export default function TVDisplayPage() {
     const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const prevServingMapRef = useRef<Map<string, string>>(new Map());
     const subscribeRef = useRef<(shopId: string) => void>(() => { });
-
-    // ── Check localStorage on mount ───────────────────────────────────────────
-    useEffect(() => {
-        const savedId = localStorage.getItem(LS_KEY);
-        if (savedId) {
-            setAuthShopId(savedId);
-        } else {
-            setAuthShopId(false);
-        }
-    }, []);
 
     // ── Build per-barber queue from a flat ticket list ─────────────────────────
     const buildQueues = useCallback(

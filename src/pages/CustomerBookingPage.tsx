@@ -132,6 +132,7 @@ export default function CustomerBookingPage() {
       if (error) {
         if (error.message.includes('shop_closed')) toast.error('عذراً — الصالون مغلق حالياً');
         else if (error.message.includes('duplicate_active_ticket')) toast.error('لديك حجز نشط بالفعل');
+        else if (error.message.includes('invalid_phone')) toast.error('رقم الهاتف يجب أن يكون 10 أرقام ويبدأ بـ 05 أو 06 أو 07');
         else toast.error('فشل في إنشاء التذكرة');
         setSubmitting(false);
         return;
@@ -268,9 +269,9 @@ export default function CustomerBookingPage() {
               <Label className="flex items-center gap-2 text-zinc-300 text-sm font-bold">
                 <Phone className="w-4 h-4 text-yellow-400" /> رقم الهاتف
               </Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="05xxxxxxxx"
+              <Input value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="05xxxxxxxx"
                 className="rounded-xl h-12 bg-black border-zinc-700 focus-visible:ring-yellow-400 text-white placeholder:text-zinc-600 text-left"
-                dir="ltr" required type="tel" />
+                dir="ltr" required type="tel" inputMode="numeric" maxLength={10} pattern="0[567][0-9]{8}" />
             </div>
 
             {/* People count */}

@@ -264,11 +264,14 @@ export default function OnboardingPage() {
         </Label>
         <Input
           value={shopPhone}
-          onChange={(e) => setShopPhone(e.target.value)}
+          onChange={(e) => setShopPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
           placeholder="05xxxxxxxx"
           className="rounded-2xl h-14 bg-black/50 border-zinc-800 text-white focus-visible:ring-yellow-400 placeholder:text-zinc-600 text-left"
           dir="ltr"
           type="tel"
+          inputMode="numeric"
+          maxLength={10}
+          pattern="0[567][0-9]{8}"
         />
       </div>
 
