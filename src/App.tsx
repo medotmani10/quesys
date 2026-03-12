@@ -16,13 +16,14 @@ import BarberInstallPrompt from '@/components/BarberInstallPrompt';
 import CustomerInstallPrompt from '@/components/CustomerInstallPrompt';
 import SuperAdminLoginPage from '@/pages/SuperAdminLoginPage';
 import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
+import CustomerIndexPage from '@/pages/CustomerIndexPage';
 
 function App() {
   const hostname = window.location.hostname;
   const isAdmin = hostname.includes('admin') && !hostname.includes('superadmin');
   const isSuperAdmin = hostname.includes('superadmin');
   const isBarber = hostname.includes('barber-') || hostname.includes('barber.');
-  const isCustomer = hostname.includes('customer') || hostname.includes('costumer');
+  const isCustomer = hostname.includes("customer") || hostname.includes("costumer");
 
   // ---------------------------------------------------------------------------
   // SUPERADMIN ROUTES (superadmin-barberticket.vercel.app)
@@ -102,7 +103,7 @@ function App() {
             {/* Legacy redirect or backup */}
             <Route path="/t/:ticketId" element={<TicketStatusPage />} />
             {/* Default redirect to a sample shop or show landing */}
-            <Route path="/" element={<Navigate to="/default-slug" replace />} />
+            <Route path="/" element={<CustomerIndexPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           <CustomerInstallPrompt />

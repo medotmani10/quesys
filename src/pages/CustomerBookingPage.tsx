@@ -71,8 +71,16 @@ export default function CustomerBookingPage() {
     if (!slug) return;
     try {
       const { data: shopData, error: shopError } = await supabase.from('shops').select('*').eq('slug', slug).single();
-      if (shopError || !shopData) { toast.error('الصالون غير موجود'); navigate('/'); return; }
+      if (shopError || !shopData) {
+        toast.error('الصالون غير موجود');
+        localStorage.removeItem('last_shop_slug');
+        navigate('/');
+        return;
+      }
       setShop(shopData as Shop);
+
+      // Save last visited shop slug for future redirects
+      localStorage.setItem('last_shop_slug', slug);
 
       const { data: barbersData } = await supabase.from('barbers').select('*').eq('shop_id', shopData.id).eq('is_active', true).order('created_at', { ascending: true });
       const bList = (barbersData as Barber[]) || [];

@@ -92,11 +92,11 @@ export function ThermalTicket({
                     color: '#000'
                 }}>
                     <div>{displayTicketCode}</div>
-                    {peopleAhead !== undefined && (
+                    {peopleAhead !== undefined ? (
                         <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#000', marginTop: '6px' }}>
                             أشخاص في الانتظار: {peopleAhead}
                         </div>
-                    )}
+                    ) : null}
                 </div>
             </div>
 
