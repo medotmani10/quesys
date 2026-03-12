@@ -1,5 +1,5 @@
 import { QRCodeSVG } from 'qrcode.react';
-import { getCustomerBaseUrl } from '@/lib/utils';
+import { getCustomerBaseUrl, getTicketCode } from '@/lib/utils';
 
 function sanitizeHtml(html: string): string {
     return html
@@ -29,6 +29,8 @@ export function ThermalTicket({
     ticketNumber,
     ticketId,
     customerName,
+    barberName,
+    barberIndex,
     shopName,
     peopleCount,
     peopleAhead,
@@ -44,6 +46,8 @@ export function ThermalTicket({
         hour: '2-digit',
         minute: '2-digit',
     });
+
+    const displayTicketCode = getTicketCode(barberIndex, ticketNumber);
 
     return (
         <div
@@ -87,10 +91,10 @@ export function ThermalTicket({
                     margin: '0 auto',
                     color: '#000'
                 }}>
-                    <div>{ticketNumber}</div>
+                    <div>{displayTicketCode}</div>
                     {peopleAhead !== undefined && (
                         <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#000', marginTop: '6px' }}>
-                            سيارات قبلك: {peopleAhead}
+                            أشخاص في الانتظار: {peopleAhead}
                         </div>
                     )}
                 </div>
@@ -105,13 +109,16 @@ export function ThermalTicket({
                 marginTop: '5px'
             }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'right', flex: 1 }}>
-                    <div style={{ fontSize: '15px', fontWeight: 'bold', color: '#000' }}>
-                        الزبون:
-                        <br />
-                        <span style={{ fontWeight: 'bold', fontSize: '18px' }}>{customerName}</span>
-                    </div>
                     <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#000' }}>
-                        السيارات: <span style={{ fontWeight: 'bold' }}>{peopleCount}</span>
+                        الزبون: <span style={{ fontWeight: 'bold', fontSize: '15px' }}>{customerName}</span>
+                    </div>
+                    {barberName && (
+                        <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#000' }}>
+                            الحلاق: <span style={{ fontWeight: 'bold', fontSize: '15px' }}>{barberName}</span>
+                        </div>
+                    )}
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#000' }}>
+                        الأشخاص: <span style={{ fontWeight: 'bold', fontSize: '15px' }}>{peopleCount}</span>
                     </div>
                 </div>
 
@@ -140,13 +147,14 @@ export function ThermalTicket({
             </div>
 
             <div style={{ fontSize: '12px', color: '#000', marginTop: '5px', fontWeight: 'bold', borderTop: '4px dashed #000', paddingTop: '5px' }}>
-                شكرا لثقتكم بنا! نظافة تدوم
+                نشكركم على زيارتكم ، الى لقاء آخر
             </div>
         </div>
     );
 }
 
 export async function printThermalTicket(props: ThermalTicketProps) {
+    const displayCode = getTicketCode(props.barberIndex, props.ticketNumber);
     const container = document.createElement('div');
     container.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
     document.body.appendChild(container);
@@ -176,11 +184,11 @@ export async function printThermalTicket(props: ThermalTicketProps) {
             });
 
             if (blob) {
-                const file = new File([blob], `ticket-${props.ticketNumber}.png`, { type: 'image/png' });
+                const file = new File([blob], `ticket-${displayCode}.png`, { type: 'image/png' });
                 if (navigator.canShare({ files: [file] })) {
                     await navigator.share({
-                        title: `تذكرة ${props.ticketNumber}`,
-                        text: `تذكرة العميل ${props.customerName} - محطة ${props.shopName}`,
+                        title: `تذكرة ${displayCode}`,
+                        text: `تذكرة العميل ${props.customerName} - صالون ${props.shopName}`,
                         files: [file]
                     });
                     root.unmount();
@@ -210,14 +218,13 @@ export async function printThermalTicket(props: ThermalTicketProps) {
         return;
     }
 
-    const code = `#${props.ticketNumber}`;
     doc.open();
     doc.write(`
 <!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
   <meta charset="UTF-8">
-  <title>تذكرة ${code}</title>
+  <title>تذكرة ${displayCode}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;900&display=swap" rel="stylesheet">
