@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Store, MapPin, Upload, ArrowRight, Save, Plus, Scissors, Loader2, Smartphone, Edit2, Trash2, Tv } from 'lucide-react';
 import { toast } from 'sonner';
 import { compressImage } from '@/lib/imageCompression';
+import { MOROCCO_MOBILE_PHONE_REGEX } from '@/lib/utils';
 
 export default function AdminSettingsPage() {
     const navigate = useNavigate();
@@ -142,6 +143,11 @@ export default function AdminSettingsPage() {
     const saveShopSettings = async () => {
         if (!shop || !shopName.trim()) {
             toast.error('يرجى إدخال اسم الصالون');
+            return;
+        }
+
+        if (shopPhone.trim() && !MOROCCO_MOBILE_PHONE_REGEX.test(shopPhone.trim())) {
+            toast.error('رقم الهاتف يجب أن يكون 10 أرقام ويبدأ بـ 05 أو 06 أو 07');
             return;
         }
 

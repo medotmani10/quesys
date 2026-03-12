@@ -5,6 +5,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export const MOROCCO_MOBILE_PHONE_REGEX = /^0[567]\d{8}$/
+
 export function getMainBaseUrl() {
   if (typeof window === 'undefined') return '';
   const host = window.location.host;

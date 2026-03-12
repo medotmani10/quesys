@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Plus, X, Upload, Store, MapPin, Users, ChevronLeft, Check, Smartphone, Scissors } from 'lucide-react';
 import { toast } from 'sonner';
 import { compressImage } from '@/lib/imageCompression';
+import { MOROCCO_MOBILE_PHONE_REGEX } from '@/lib/utils';
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
@@ -122,6 +123,11 @@ export default function OnboardingPage() {
   const handleSubmit = async () => {
     if (!shopName.trim()) {
       toast.error('يرجى إدخال اسم الصالون');
+      return;
+    }
+
+    if (shopPhone.trim() && !MOROCCO_MOBILE_PHONE_REGEX.test(shopPhone.trim())) {
+      toast.error('رقم الهاتف يجب أن يكون 10 أرقام ويبدأ بـ 05 أو 06 أو 07');
       return;
     }
 

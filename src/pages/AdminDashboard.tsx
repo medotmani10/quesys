@@ -18,7 +18,7 @@ import { playTicketSound } from '@/lib/notificationSound';
 import { getTicketCode } from '@/lib/utils';
 
 /* ─── helpers ─── */
-import { cn, getCustomerBaseUrl, getBarberBaseUrl, getMainBaseUrl } from '@/lib/utils';
+import { cn, getCustomerBaseUrl, getBarberBaseUrl, getMainBaseUrl, MOROCCO_MOBILE_PHONE_REGEX } from '@/lib/utils';
 
 /* ─── StatCard ─── */
 function StatCard({ label, value, color, sub }: { label: string; value: number; color: string; sub?: string }) {
@@ -415,6 +415,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!shop || submittingManual) return;
     if (!manualBarber) { toast.error('يرجى اختيار الحلاق'); return; }
+    if (manualPhone.trim() && !MOROCCO_MOBILE_PHONE_REGEX.test(manualPhone.trim())) { toast.error('رقم الهاتف يجب أن يكون 10 أرقام ويبدأ بـ 05 أو 06 أو 07'); return; }
     setSubmittingManual(true);
     try {
       const barberIndex = getBarberIndex(manualBarber);

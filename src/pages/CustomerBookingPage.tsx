@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MapPin, User, Phone, Users, Scissors, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { MOROCCO_MOBILE_PHONE_REGEX } from '@/lib/utils';
 import ShopClosedScreen from '@/components/booking/ShopClosedScreen';
 
 export default function CustomerBookingPage() {
@@ -111,7 +112,7 @@ export default function CustomerBookingPage() {
     e.preventDefault();
     if (!shop) return;
     if (!name.trim() || !phone.trim()) { toast.error('يرجى ملء جميع الحقول'); return; }
-    if (!/^[+]?[\d\s()-]{5,15}$/.test(phone.trim())) { toast.error('رقم الهاتف غير صحيح'); return; }
+    if (phone.trim() && !MOROCCO_MOBILE_PHONE_REGEX.test(phone.trim())) { toast.error('رقم الهاتف يجب أن يكون 10 أرقام ويبدأ بـ 05 أو 06 أو 07'); return; }
     if (!selectedBarber) { toast.error('يرجى اختيار الحلاق أولاً'); return; }
 
     setSubmitting(true);
