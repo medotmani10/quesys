@@ -444,6 +444,11 @@ export default function AdminDashboard() {
 
       toast.success(`تم إنشاء التذكرة ${ticketCode}`);
       if (autoPrint) {
+        // Calculate people ahead
+        const peopleAhead = tickets
+          .filter(t => t.barber_id === manualBarber && t.status === 'waiting' && new Date(t.created_at) < new Date(insertedTicket.created_at))
+          .reduce((acc, t) => acc + (t.people_count || 1), 0);
+
         printThermalTicket({
           ticketNumber: insertedTicket.ticket_number,
           ticketId: insertedTicket.id,
@@ -453,6 +458,7 @@ export default function AdminDashboard() {
           shopName: shop.name,
           shopSlug: shop.slug,
           peopleCount: manualPeople,
+          peopleAhead: peopleAhead,
           createdAt: new Date(),
         });
       }
@@ -947,6 +953,28 @@ export default function AdminDashboard() {
                           )}>
                             {t.status === 'serving' ? 'يُخدم' : 'انتظار'}
                           </span>
+                          <button onClick={(e) => {
+                            e.stopPropagation();
+                            const peopleAhead = tickets
+                              .filter(tk => tk.barber_id === t.barber_id && tk.status === 'waiting' && new Date(tk.created_at) < new Date(t.created_at))
+                              .reduce((acc, tk) => acc + (tk.people_count || 1), 0);
+                            printThermalTicket({
+                              ticketNumber: t.ticket_number,
+                              ticketId: t.id,
+                              customerName: t.customer_name,
+                              barberName: barber?.name,
+                              barberIndex,
+                              shopName: shop.name,
+                              shopSlug: shop.slug,
+                              peopleCount: t.people_count,
+                              peopleAhead: peopleAhead,
+                              createdAt: new Date(t.created_at),
+                            });
+                          }}
+                            title="طباعة التذكرة"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-600 hover:text-blue-400 hover:bg-blue-500/10 transition-all border border-transparent hover:border-blue-500/20">
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
                           <button onClick={(e) => { e.stopPropagation(); cancelTicket(t.id); }}
                             className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20">
                             <X className="w-3.5 h-3.5" />
@@ -1033,10 +1061,34 @@ export default function AdminDashboard() {
                               <p className="text-sm text-zinc-500">{t.customer_name}</p>
                             </div>
                           </div>
-                          <button onClick={() => cancelTicket(t.id)}
-                            className="w-10 h-10 rounded-xl flex items-center justify-center text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20">
-                            <X className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button onClick={(e) => {
+                              e.stopPropagation();
+                              const peopleAhead = tickets
+                                .filter(tk => tk.barber_id === t.barber_id && tk.status === 'waiting' && new Date(tk.created_at) < new Date(t.created_at))
+                                .reduce((acc, tk) => acc + (tk.people_count || 1), 0);
+                              printThermalTicket({
+                                ticketNumber: t.ticket_number,
+                                ticketId: t.id,
+                                customerName: t.customer_name,
+                                barberName: barber.name,
+                                barberIndex: getBarberIndex(barber.id),
+                                shopName: shop.name,
+                                shopSlug: shop.slug,
+                                peopleCount: t.people_count,
+                                peopleAhead: peopleAhead,
+                                createdAt: new Date(t.created_at),
+                              });
+                            }}
+                              title="طباعة التذكرة"
+                              className="w-10 h-10 rounded-xl flex items-center justify-center text-zinc-600 hover:text-blue-400 hover:bg-blue-500/10 transition-all border border-transparent hover:border-blue-500/20">
+                              <Printer className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => cancelTicket(t.id)}
+                              className="w-10 h-10 rounded-xl flex items-center justify-center text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20">
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                       {waiting.length === 0 && (
