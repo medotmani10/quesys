@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { printThermalTicket } from '@/components/ThermalTicket';
 import { playTicketSound } from '@/lib/notificationSound';
 import { getTicketCode } from '@/lib/utils';
+import { sendPushToUser } from '@/lib/pushNotification';
 
 /* ─── helpers ─── */
 import { cn, getCustomerBaseUrl, getBarberBaseUrl, getMainBaseUrl, MOROCCO_MOBILE_PHONE_REGEX } from '@/lib/utils';
@@ -311,6 +312,10 @@ export default function AdminDashboard() {
   const soundEnabledRef = useRef(soundEnabled);
   useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
 
+  // Keep barbers list fresh inside realtime callbacks (avoids stale closure)
+  const barbersRef = useRef<Barber[]>([]);
+  useEffect(() => { barbersRef.current = barbers; }, [barbers]);
+
   const loadTicketsRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   // initialise audio context on first user interaction — improves autoplay policy
@@ -337,8 +342,24 @@ export default function AdminDashboard() {
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'tickets', filter: `shop_id=eq.${shop.id}` },
         (payload) => {
-          const isManual = (payload.new as { user_session_id?: string })?.user_session_id?.startsWith('manual_');
+          const newTicket = payload.new as Ticket;
+          const isManual = newTicket?.user_session_id?.startsWith('manual_');
+
           if (!isManual && soundEnabledRef.current) playTicketSound();
+
+          // Send push notification to the assigned barber (if they subscribed)
+          if (newTicket?.barber_id) {
+            const assignedBarber = barbersRef.current.find(b => b.id === newTicket.barber_id);
+            if (assignedBarber?.auth_id) {
+              sendPushToUser({
+                userId: assignedBarber.auth_id,
+                title: '🔔 زبون جديد في طابورك!',
+                body: `${newTicket.customer_name} انضم للانتظار (${newTicket.people_count} شخص)`,
+                url: `/${shop.slug}/barber`,
+              });
+            }
+          }
+
           loadTicketsRef.current();
         }
       )
