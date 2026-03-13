@@ -5,10 +5,11 @@ import type { Shop, Barber, Ticket } from '@/types/database';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Scissors, LogOut, CheckCircle, BellRing, User, Clock, Loader2, Phone } from 'lucide-react';
+import { Scissors, LogOut, CheckCircle, BellRing, User, Clock, Loader2, Phone, Bell, BellOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTicketCode } from '@/lib/utils';
 import BarberInstallPrompt from '@/components/BarberInstallPrompt';
+import { usePushSubscription } from '@/hooks/usePushSubscription';
 
 export default function BarberDashboard() {
     const { slug } = useParams<{ slug: string }>();
@@ -16,6 +17,7 @@ export default function BarberDashboard() {
 
     const [shop, setShop] = useState<Shop | null>(null);
     const [barber, setBarber] = useState<Barber | null>(null);
+    const [authUserId, setAuthUserId] = useState<string | null>(null);
     const [servingTicket, setServingTicket] = useState<Ticket | null>(null);
     const [waitingTickets, setWaitingTickets] = useState<Ticket[]>([]);
     const [barberIndex, setBarberIndex] = useState<number>(0);
@@ -23,6 +25,20 @@ export default function BarberDashboard() {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [selectedTicketDetails, setSelectedTicketDetails] = useState<Ticket | null>(null);
+
+    // Web Push subscription
+    const { notificationPermission, isSubscribing, subscribeToWebPush } = usePushSubscription();
+    const isPushEnabled = notificationPermission === 'granted';
+
+    const handleEnablePush = async () => {
+        if (!authUserId) return;
+        const success = await subscribeToWebPush(authUserId);
+        if (success) {
+            toast.success('تم تفعيل الإشعارات بنجاح! ستصلك تنبيهات عند وصول زبائن جدد.');
+        } else {
+            toast.error('فشل تفعيل الإشعارات. تأكد من أن المتصفح يدعم الإشعارات.');
+        }
+    };
 
     const fetchTickets = useCallback(async (shopId: string, barberId: string) => {
         // Fetch serving ticket for THIS barber
@@ -56,6 +72,7 @@ export default function BarberDashboard() {
                 navigate(`/${slug}/barber/login`);
                 return;
             }
+            setAuthUserId(session.user.id);
 
             // 1. Get Barber Profile
             const { data: barberData, error: barberError } = await supabase
@@ -237,9 +254,31 @@ export default function BarberDashboard() {
                         <p className="text-zinc-500 text-xs font-bold">{shop.name}</p>
                     </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl h-12 w-12">
-                    <LogOut className="w-6 h-6" />
-                </Button>
+                <div className="flex items-center gap-2">
+                    {/* Push Notification Toggle */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleEnablePush}
+                        disabled={isSubscribing || isPushEnabled}
+                        title={isPushEnabled ? 'الإشعارات مفعّلة' : 'تفعيل الإشعارات'}
+                        className={`rounded-xl h-12 w-12 transition-colors ${isPushEnabled
+                                ? 'text-green-400 hover:text-green-300 hover:bg-green-500/10'
+                                : 'text-zinc-500 hover:text-yellow-400 hover:bg-yellow-400/10'
+                            }`}
+                    >
+                        {isSubscribing ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : isPushEnabled ? (
+                            <Bell className="w-5 h-5" />
+                        ) : (
+                            <BellOff className="w-5 h-5" />
+                        )}
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl h-12 w-12">
+                        <LogOut className="w-6 h-6" />
+                    </Button>
+                </div>
             </header>
 
             <div className="flex-1 max-w-lg mx-auto w-full space-y-6">
