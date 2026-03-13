@@ -11,6 +11,9 @@ export default defineConfig({
     inspectAttr(),
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'public',
+      filename: 'sw.js',
       registerType: 'autoUpdate',
       includeAssets: ['pwa-icon.svg'],
       manifest: {
